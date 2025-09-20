@@ -108,19 +108,14 @@ export default function CreateGroupPage() {
               rows={4}
               value={formData.description}
               onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
-              placeholder="Describe the purpose of this group and what kind of feedback or signals members can share..."
+              placeholder="Describe the purpose of this group..."
               className="w-full px-4 py-3 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground resize-none"
             />
           </div>
 
           {/* Email Restrictions */}
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Email Verification Requirements *</label>
-            <p className="text-sm text-muted-foreground mb-4">
-              Specify what email addresses can join this group. Members will need to prove they have access to emails
-              matching these criteria.
-            </p>
-
+            <label className="block text-sm font-medium text-foreground mb-2">Email Blueprint *</label>
             <div className="space-y-3">
               {formData.restrictions.map((restriction, index) => (
                 <div key={index} className="flex gap-2">
@@ -129,7 +124,7 @@ export default function CreateGroupPage() {
                     required
                     value={restriction}
                     onChange={(e) => updateRestriction(index, e.target.value)}
-                    placeholder="e.g., @company.com, attended hackathon in Berlin 2024, YC alumni"
+                    placeholder="<github-username>/<blueprint-name>@version"
                     className="flex-1 px-4 py-3 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground"
                   />
                   {formData.restrictions.length > 1 && (
@@ -144,26 +139,15 @@ export default function CreateGroupPage() {
                 </div>
               ))}
             </div>
-
-            <button
-              type="button"
-              onClick={addRestriction}
-              className="mt-3 inline-flex items-center text-sm text-primary hover:text-primary/80 transition-colors"
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              Add another requirement
-            </button>
           </div>
 
           {/* Examples */}
           <div className="bg-muted/30 p-4 rounded-lg">
             <h3 className="text-sm font-medium text-foreground mb-2">Example Requirements:</h3>
             <ul className="text-sm text-muted-foreground space-y-1">
-              <li>• Email ending with @stanford.edu</li>
+            <li>• Alumni from specific program or residency</li>
               <li>• Attended YC Demo Day 2024</li>
               <li>• Participated in ETH Global hackathon</li>
-              <li>• Employee at specific company</li>
-              <li>• Alumni from specific program or residency</li>
             </ul>
           </div>
 
@@ -183,15 +167,6 @@ export default function CreateGroupPage() {
             </Link>
           </div>
         </form>
-
-        {/* Info Box */}
-        <div className="mt-8 p-4 bg-primary/5 border border-primary/20 rounded-lg">
-          <h3 className="text-sm font-medium text-foreground mb-2">How Email Verification Works</h3>
-          <p className="text-sm text-muted-foreground">
-            Members will use zero-knowledge proofs to verify they have access to emails meeting your requirements
-            without revealing their actual email addresses. This ensures privacy while maintaining group integrity.
-          </p>
-        </div>
       </div>
     </div>
   )
