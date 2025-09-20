@@ -18,15 +18,6 @@ const mockGroups = [
     createdAt: "2024-01-15",
   },
   {
-    id: 2,
-    name: "MIT Alumni 2023",
-    description:
-      "Connect with fellow MIT graduates from 2023. Discuss career paths, share opportunities, and provide anonymous feedback on university experiences.",
-    restrictions: ["@mit.edu email", "2023 graduation verification"],
-    memberCount: 156,
-    createdAt: "2024-02-01",
-  },
-  {
     id: 3,
     name: "Hacker House Berlin",
     description:
@@ -34,15 +25,6 @@ const mockGroups = [
     restrictions: ["Berlin Hacker House attendance proof"],
     memberCount: 23,
     createdAt: "2024-03-10",
-  },
-  {
-    id: 4,
-    name: "Stripe Engineering",
-    description:
-      "Anonymous feedback platform for Stripe engineering team members. Discuss processes, culture, and improvements in a safe space.",
-    restrictions: ["@stripe.com email"],
-    memberCount: 89,
-    createdAt: "2024-01-20",
   },
 ]
 
@@ -259,14 +241,14 @@ export default function GroupsPage() {
                       onChange={handleFileUpload}
                       className="hidden"
                       id="verification-file"
-                      accept=".eml,.txt,.pdf"
+                      accept=".eml"
                     />
                     <label htmlFor="verification-file" className="cursor-pointer">
                       <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
                       <p className="text-sm text-muted-foreground">
                         {uploadFile ? uploadFile.name : "Click to upload verification file"}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-1">Supported: .eml, .txt, .pdf</p>
+                      <p className="text-xs text-muted-foreground mt-1">Supported: .eml</p>
                     </label>
                   </div>
                 </div>
