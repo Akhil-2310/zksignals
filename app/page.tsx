@@ -39,7 +39,7 @@ export default function HomePage() {
       <section className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-6 text-balance">
-            Anonymous Feedback for
+            Anonymous Signaling for
             <span className="text-primary"> Verified Communities</span>
           </h1>
           <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto text-pretty">
@@ -242,7 +242,7 @@ export default function HomePage() {
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-border text-center text-muted-foreground">
-            <p>&copy; 2024 AnonSignals. Built for privacy-first communities.</p>
+            <p>&copy; 2025 AnonSignals. Built for privacy-first communities.</p>
           </div>
         </div>
       </footer>
