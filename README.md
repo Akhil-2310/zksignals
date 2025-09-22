@@ -17,7 +17,7 @@ To help you test zkSignals, we've provided sample EML files for different email 
 
 Instead of copying, you can download these pre-made EML files:
 
-- **[residency.eml](./examples/residency.eml)** - For succint residency group
+- **[residency.eml](./examples/residency.eml?raw=1)** - For succint residency group
 - **[zkhh_india.eml](./examples/zkhh_india.eml)** - For zkVerify India hacker house group 
 - **[zkhh_vietnam.eml](./examples/zkhh_vietnam.eml)** - For zkVeify Vietnam hacker house group
 
