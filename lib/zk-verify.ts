@@ -29,6 +29,8 @@ export interface ZKVerifyProofPayload {
   }
 }
 
+console.log('vk map', config.semaphore.vkHashes)
+
 // Submit proof to ZK Verify relayer for verification
 export async function submitProofToZKVerify(
   proofPayload: ZKVerifyProofPayload
@@ -117,8 +119,19 @@ export async function checkProofStatus(proofHash: string): Promise<ZKVerifyProof
 }
 
 // Get Semaphore vkHash from config
-function getSemaphoreVkHash(): string {
-  return config.semaphore.vkHash
+function getSemaphoreVkHash(depth?: number): string {
+  if (depth !== undefined) {
+    const mapped = config.semaphore.vkHashes[depth]
+    if (mapped) {
+      return mapped
+    }
+  }
+
+  if (config.semaphore.defaultVkHash) {
+    return config.semaphore.defaultVkHash
+  }
+
+  throw new Error(`No Semaphore vkHash configured for depth ${depth ?? 'unknown'}`)
 }
 
 // Submit Semaphore proof for group joining
@@ -128,7 +141,7 @@ export async function submitGroupJoinProof(
   zkEmailProofHash: string
 ): Promise<ZKVerifySubmissionResult> {
   try {
-    const vkHash = getSemaphoreVkHash()
+    const vkHash = getSemaphoreVkHash(semaphoreProof.merkleTreeDepth)
 
     const submitParams = {
       proofType: 'groth16',
@@ -185,7 +198,7 @@ export async function submitPostProof(
   semaphoreProof: SemaphoreProofData
 ): Promise<ZKVerifySubmissionResult> {
   try {
-    const vkHash = getSemaphoreVkHash()
+    const vkHash = getSemaphoreVkHash(semaphoreProof.merkleTreeDepth)
 
     const submitParams = {
       proofType: 'groth16',
@@ -200,6 +213,7 @@ export async function submitPostProof(
 
     console.log('Submitting Semaphore post proof:', {
       vkHash,
+      merkleTreeDepth: semaphoreProof.merkleTreeDepth,
       proofData: {
         proof: semaphoreProof.proof,
         publicSignals: semaphoreProof.publicSignals
@@ -267,7 +281,7 @@ export async function submitVoteProof(
   voteChoice: 'yes' | 'no'
 ): Promise<ZKVerifySubmissionResult> {
   try {
-    const vkHash = getSemaphoreVkHash()
+    const vkHash = getSemaphoreVkHash(semaphoreProof.merkleTreeDepth)
 
     const submitParams = {
       proofType: 'groth16',
@@ -282,6 +296,7 @@ export async function submitVoteProof(
 
     console.log('Submitting Semaphore vote proof:', {
       vkHash,
+      merkleTreeDepth: semaphoreProof.merkleTreeDepth,
       proofData: {
         proof: semaphoreProof.proof,
         publicSignals: semaphoreProof.publicSignals
@@ -448,4 +463,3 @@ export async function waitForProofVerification(
     error: 'Verification timeout - job did not complete in time'
   }
 }
-

@@ -24,6 +24,7 @@ export interface SemaphoreProofData {
   nullifier: string
   signalHash: string
   externalNullifier: string
+  merkleTreeDepth: number
 }
 
 export type SemProofBundle = {
@@ -33,6 +34,7 @@ export type SemProofBundle = {
   signalHash: string             // hashed message used for proving
   externalNullifier: string      // hashed scope used for proving
   publicSignals: string[]        // for backward compatibility
+  merkleTreeDepth: number
 }
 
 // Hash function for Semaphore (matches the circuit)
@@ -109,7 +111,8 @@ export async function generateSemaphoreProofDeterministic(
     nullifier: semaProof.nullifier.toString(),
     signalHash,
     externalNullifier,
-    publicSignals
+    publicSignals,
+    merkleTreeDepth: semaProof.merkleTreeDepth
   }
 }
 
@@ -213,7 +216,8 @@ export async function generateSemaphoreProof(
     console.log('Final proof data:', {
       proof: snarkjsProof,
       publicSignals,
-      publicSignalsAsStrings: publicSignals.map(s => s.toString())
+      publicSignalsAsStrings: publicSignals.map(s => s.toString()),
+      merkleTreeDepth: semaProof.merkleTreeDepth
     })
     
     return {
@@ -222,7 +226,8 @@ export async function generateSemaphoreProof(
       merkleTreeRoot: semaProof.merkleTreeRoot.toString(),
       nullifier: semaProof.nullifier.toString(),
       signalHash,
-      externalNullifier
+      externalNullifier,
+      merkleTreeDepth: semaProof.merkleTreeDepth
     }
   } catch (error) {
     console.error('Error generating Semaphore proof:', error)

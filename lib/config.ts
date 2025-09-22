@@ -1,3 +1,37 @@
+const defaultSemaphoreVkHash = process.env.NEXT_PUBLIC_SEMAPHORE_VK_HASH
+console.log(process.env.NEXT_PUBLIC_SEMAPHORE_VK_HASHES );
+
+
+// Accepts SEMAPHORE_VK_HASHES='{"3":"0x...","20":"0x..."}' to map depth→vk hash
+const semaphoreVkHashes: Record<number, string> = (() => {
+  const rawMap = process.env.NEXT_PUBLIC_SEMAPHORE_VK_HASHES
+  if (!rawMap) {
+    return {}
+  }
+
+  try {
+    const trimmed = rawMap.trim()
+    const unwrapped = trimmed.startsWith("'") && trimmed.endsWith("'")
+      ? trimmed.slice(1, -1)
+      : trimmed
+
+    const parsed = JSON.parse(unwrapped) as Record<string, string>
+    return Object.entries(parsed).reduce<Record<number, string>>((acc, [depth, hash]) => {
+      const depthNumber = Number(depth)
+      if (!Number.isFinite(depthNumber)) {
+        return acc
+      }
+      if (typeof hash === 'string' && hash.length > 0) {
+        acc[depthNumber] = hash
+      }
+      return acc
+    }, {})
+  } catch (error) {
+    console.warn('Invalid SEMAPHORE_VK_HASHES value. Expected JSON object mapping depths to vk hashes.')
+    return {}
+  }
+})()
+
 // Configuration for AnonSignals app
 export const config = {
   supabase: {
@@ -9,7 +43,8 @@ export const config = {
     apiKey: process.env.ZK_VERIFY_API_KEY || "6a28b4aa810b6dc10b3dff9d8e185008f59423c7",
   },
   semaphore: {
-    vkHash: process.env.SEMAPHORE_VK_HASH || '0x34dbbf93056bcae972f337f57a8283fce5f71cfd97de4241e0645c914a3e635f',
+    defaultVkHash: defaultSemaphoreVkHash,
+    vkHashes: semaphoreVkHashes,
   },
   app: {
     url: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
