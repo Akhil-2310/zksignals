@@ -9,7 +9,7 @@ export const config = {
     apiKey: process.env.ZK_VERIFY_API_KEY || "6a28b4aa810b6dc10b3dff9d8e185008f59423c7",
   },
   semaphore: {
-    vkHash: process.env.SEMAPHORE_VK_HASH || '0xe8feeb86e417bd8bb91670d860cb74e9fac3b127a91cb7f593e59070533a61cf',
+    vkHash: '0xe8feeb86e417bd8bb91670d860cb74e9fac3b127a91cb7f593e59070533a61cf',
   },
   app: {
     url: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
