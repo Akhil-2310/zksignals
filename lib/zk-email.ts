@@ -286,8 +286,6 @@ export function validateBlueprintFormat(blueprint: string): boolean {
 
 // Get blueprint examples for UI
 export const BLUEPRINT_EXAMPLES = [
-  'zkemail/yc-demo-day@v1.0.0',
-  'zkemail/eth-global-hackathon@v1.0.0', 
-  'zkemail/university-alumni@v1.0.0',
-  'zkemail/company-employee@v1.0.0'
+  'Akhil-2310/hackerhouse_india@v4',
+  'Bisht13/SuccinctZKResidencyInvite@v3', 
 ] as const
