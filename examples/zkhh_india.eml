@@ -1,0 +1,158 @@
+Delivered-To: akhilnanavati23@gmail.com
+Received: by 2002:a05:6f02:a46c:b0:e4:8856:7589 with SMTP id e44csp1501213rcb;
+        Thu, 4 Sep 2025 09:47:40 -0700 (PDT)
+X-Forwarded-Encrypted: i=2; AJvYcCUfEovsTWJLFYgf5qSqrWj5d2Uy0QkZno4Q+vF6HKJUzRrrziiaHu4HSZ9hxjcy+ybifcFU+5x+hyG3E0xmxIU=@gmail.com
+X-Received: by 2002:a05:6512:145a:10b0:560:8484:a92f with SMTP id 2adb3069b0e04-5608484ab16mr2826157e87.45.1757004460774;
+        Thu, 04 Sep 2025 09:47:40 -0700 (PDT)
+ARC-Seal: i=1; a=rsa-sha256; t=1757004460; cv=none;
+        d=google.com; s=arc-20240605;
+        b=cBcF3/06/2tUHYaMQa49+jKtb/v72MT7upsqC1XrCTkFCkz8K3NeJEl3rViw6H+1aI
+         r2+A/ieeGqg8Cqlh6YQRFJ/R9lqxnRKDkerzbh4aOJS6ezBsFpZ4sVi7nMgr2sH0Gc9c
+         UTglVBwr8wfl23o1f9p1MKNMuX0eSG62XMDpa/Q1cHR3SQP43CCz0fKHZ34tM6FAXrOS
+         C4aVbOcKm8aPpm7UpgB25MAKahD6AsfYhe50ZKw8jLn+uzNWvcXV9Rli/+y64E4XmOk4
+         dK+GmkApc71qg5yNGMu0nOoqzwSdKQ1fNARhX4aPzACK1kMfIXLM7zn5sHOU2+vrP2Tv
+         4OoQ==
+ARC-Message-Signature: i=1; a=rsa-sha256; c=relaxed/relaxed; d=google.com; s=arc-20240605;
+        h=to:subject:message-id:date:from:mime-version:dkim-signature;
+        bh=LL8oE0VDSTgLARu/z+6Mfik+XiGrLxQMj7ucUu1z0+s=;
+        fh=VHdWPKiH7qfNOT3mo+/zUTAZ/Fz7xT1mkcPrbL5RN9Y=;
+        b=B46jRSqxPbblQpY7ftv97B2tejDmbBa7uAnoU9lfPhuLTdfQdnS9CISZW9BT7XGv6b
+         7Wc72Oc+PShX1NiENXJrevCuiVCzWNKqwcjSFO2Bma7NJEt7giOUotfQZpb6PO3LWiQx
+         Ic2HKMUEwh1+yIxrJOPwpVV6bsQ1p57NDc8bnct5G4dFPWCHHxLIHAEvKOp/vYW9E48S
+         KOMOPr0PelVrEvkAlHZUfFWzc4q0nHZJGBv9oisnng71HYhcRXQCna+44V0sZzPpJ9LN
+         4Ead0Fawj2fp33w7xqxZs4rEdh7aegoRfBvaxx60PiU4xK1bgitKfjGu4JRXHPOV9T24
+         bCew==;
+        dara=google.com
+ARC-Authentication-Results: i=1; mx.google.com;
+       dkim=pass header.i=@zkverify.io header.s=google header.b="d1+/fwhk";
+       spf=pass (google.com: domain of arman@zkverify.io designates 209.85.220.41 as permitted sender) smtp.mailfrom=arman@zkverify.io;
+       dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=zkverify.io;
+       dara=pass header.i=@gmail.com
+Return-Path: <arman@zkverify.io>
+Received: from mail-sor-f41.google.com (mail-sor-f41.google.com. [209.85.220.41])
+        by mx.google.com with SMTPS id 2adb3069b0e04-560891e5938sor1180205e87.20.2025.09.04.09.47.40
+        for <akhilnanavati23@gmail.com>
+        (Google Transport Security);
+        Thu, 04 Sep 2025 09:47:40 -0700 (PDT)
+Received-SPF: pass (google.com: domain of arman@zkverify.io designates 209.85.220.41 as permitted sender) client-ip=209.85.220.41;
+Authentication-Results: mx.google.com;
+       dkim=pass header.i=@zkverify.io header.s=google header.b="d1+/fwhk";
+       spf=pass (google.com: domain of arman@zkverify.io designates 209.85.220.41 as permitted sender) smtp.mailfrom=arman@zkverify.io;
+       dmarc=pass (p=REJECT sp=REJECT dis=NONE) header.from=zkverify.io;
+       dara=pass header.i=@gmail.com
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=zkverify.io; s=google; t=1757004460; x=1757609260; dara=google.com;
+        h=to:subject:message-id:date:from:mime-version:from:to:cc:subject
+         :date:message-id:reply-to;
+        bh=LL8oE0VDSTgLARu/z+6Mfik+XiGrLxQMj7ucUu1z0+s=;
+        b=d1+/fwhkzo1yg9zsi2EeE8yKgxeNmAmzD9TnMOUjz7WE16UiUsby4E4a+e66keuK0+
+         FSfvxDyHLbfxY1YZOpnzgQzzqaRrj26TFuk+S6byBb7VXqgVc+iW7LBj/p0SPAgserrk
+         4M6ivExBBAR4kgMO0ipkP/dG5UtTlvSJjbUHvAHLaI+qd9ABqu/nMnaSRmXPlOMo+baF
+         oUhYeZDpTcxmtog8lKONOT91Q5zZZpMn7oFr4TokzqX6l6e/yiCdUvQC3QLMt9sPBPxa
+         KKVKC6QkJHHLHXDfBjB64m5qx2srhWssxfkCNRU5KBnYc0/NoYfKvhHsvWGwerg4223P
+         sfDw==
+X-Google-DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+        d=1e100.net; s=20230601; t=1757004460; x=1757609260;
+        h=to:subject:message-id:date:from:mime-version:x-gm-message-state
+         :from:to:cc:subject:date:message-id:reply-to;
+        bh=LL8oE0VDSTgLARu/z+6Mfik+XiGrLxQMj7ucUu1z0+s=;
+        b=cf6xafTyJqz2+oHSWxWyZqLhDTsx9oGxEkTfQRio9c8sv5tru92myRhSiOvLpHqGfx
+         op6iqKrhHEpUwrasqqA4fcLv1EwfDwFTmcGNPFuyyZoiVDAZ60AHCCiuIuZ/zo3hVT9O
+         kikMPxl1rJzzuiDDMNMk+dsEIcY8K1MqhB1AHkF4vwukakRM2diUZQ/EiGkPuZ5dtPeq
+         j/X0FwPzMvP83CAPEaaKa7N5O4jX7ryQeLcKRqJoWKT4XYqhjRYjCOlsWUrLZeBEmlt/
+         5S6Yg+GNRCMUUTYPd2ehERVhmnr/0avoXUx9govOfjQNF9b7k19s+5UPM5Gnk7mn3tLz
+         JfgA==
+X-Forwarded-Encrypted: i=1; AJvYcCVgX+8IdqDvb4sNvigry7mFk7Y1vBSvRIIgWMA+lcdRy7dA3AtHQIvXHfaSE81nuIwFeMt3/b56CLInYGjZSqQ=@gmail.com
+X-Gm-Message-State: AOJu0Ywzby/E8koVHpl6TWrG9ddfDWctkLY3zSjLTFuvw+VLujlN07Vt
+	LPwFfJ5sHJccIA2QZoEOW6T7Km16ubycl18jtg3SbHly21powQW+iGmCMbMmneuejjZ36xYqZZe
+	o7Xy6guhYQN3it2C1nJbkUBd4vELfmHGyLM7vQK6JsQ==
+X-Gm-Gg: ASbGncvwu2UW9NdTOJdygpFsMvCY6oR+iwun0tVKpPtj7DgwnOJdj1iz+DYmjNYB3On
+	7vq8km7d3jyWVk1JSs4ypQxeC+CiTP6v7fihZRL4CQwckFnoDNOjKGDxM3VRWsjmah21tOdXki9
+	wh4POs0t4hkPhUKniEpGbzxX7IyOOjrRqyKmCX5psgUD0RWERzevO+Zud9dy8mX/RMSBovobXWw
+	1Wkzle4GbmgvvWp6Dnw9ZbNE/AmoXpLORQd
+X-Google-Smtp-Source: AGHT+IHC3W0pAASGHHnvWKHRZbujfVJalrEc7jq+NRbct2aKR6PW4VJImmXo8TbbhqBpWQ6wUce63Vy5xgM/jk0dCUU=
+X-Received: by 2002:a05:6512:3ca4:b0:55f:68d7:a31a with SMTP id
+ 2adb3069b0e04-55f709bdd86mr6041300e87.55.1757004459717; Thu, 04 Sep 2025
+ 09:47:39 -0700 (PDT)
+MIME-Version: 1.0
+From: Arman Aurobindo <arman@zkverify.io>
+Date: Fri, 5 Sep 2025 00:47:28 +0800
+X-Gm-Features: Ac12FXyG9HdAoTnN8zF7e8O0JTfWfh__SoZikOkgy6cU9U9t9-zgpYgIdwWHHWA
+Message-ID: <CA+t-PfjMKTUa73f0UCqgvW7dCUeuOuP6W=SUR63453A8tVsu7g@mail.gmail.com>
+Subject: =?UTF-8?B?8J+OiSBZb3XigJlyZSBJbiEgV2VsY29tZSB0byBWZXJpZmllZCBIYWNrZXIgSG91c2U7IA==?=
+	=?UTF-8?B?SW5kaWFuIEVkaXRpb27wn5ug77iP?=
+To: milica@zkverify.io
+Content-Type: multipart/alternative; boundary="000000000000b0cc20063dfc7a42"
+Bcc: akhilnanavati23@gmail.com
+
+--000000000000b0cc20063dfc7a42
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+Hey there =F0=9F=98=80
+
+Big congrats, you=E2=80=99re officially *invited as a resident to our Verif=
+ied
+Hacker House*! =F0=9F=8E=89
+
+We went through your profile and were seriously impressed by your dev
+experience. You're exactly the kind of builder we want at this house. Here
+are some of the details of our hackerhouse :
+=F0=9F=97=93=EF=B8=8F *When:* 22nd to 30th September, 2025
+=F0=9F=93=8D *Where:* Dwarka Sector 8, New Delhi (Exact location will be sh=
+ared
+closer to the date)
+=F0=9F=9B=8F=EF=B8=8F *What=E2=80=99s covered:* We=E2=80=99ve got your *sta=
+y + 3 meals/day + snacks* sorted,
+so you can just focus on building and vibing.
+
+*To lock in your spot, just fill out this Google form
+<https://forms.gle/3M1zM2uiM4Qh82xC9> within* *2** days from today*.
+https://forms.gle/3M1zM2uiM4Qh82xC9
+
+*!!! Only after filling this form will your participation be fully
+confirmed**, so don=E2=80=99t sleep on it !!!*
+
+Super excited to have you on board, can=E2=80=99t wait to build and chill t=
+ogether
+in New Delhi =F0=9F=98=8E
+
+If you=E2=80=99ve got any questions or need help with anything, feel free t=
+o reply
+here.
+Also, please join our builders telegram group <https://t.me/zkverifydev> fo=
+r
+more updates.
+
+Devrel Team,
+Horizen x zkVerify
+
+--000000000000b0cc20063dfc7a42
+Content-Type: text/html; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
+
+<div dir=3D"ltr">Hey there=C2=A0=F0=9F=98=80<div><br></div><div>Big congrat=
+s, you=E2=80=99re officially=C2=A0<strong>invited as a resident to our Veri=
+fied Hacker House</strong>!=C2=A0=F0=9F=8E=89<br><br>We went through your p=
+rofile and were seriously impressed by your dev experience. You&#39;re exac=
+tly the kind of builder we want at this house. Here are some of the details=
+ of our hackerhouse :<br>=F0=9F=97=93=EF=B8=8F=C2=A0<strong>When:</strong>=
+=C2=A022nd to 30th September, 2025<br>=F0=9F=93=8D=C2=A0<strong>Where:</str=
+ong>=C2=A0Dwarka Sector 8, New Delhi (Exact location will be shared closer =
+to the date)<br>=F0=9F=9B=8F=EF=B8=8F=C2=A0<strong>What=E2=80=99s covered:<=
+/strong>=C2=A0We=E2=80=99ve got your=C2=A0<strong>stay + 3 meals/day + snac=
+ks</strong>=C2=A0sorted, so you can just focus on building and vibing.<br><=
+br><b>To lock in your spot, just fill out this=C2=A0<a href=3D"https://form=
+s.gle/3M1zM2uiM4Qh82xC9" target=3D"_blank">Google form</a>=C2=A0within</b>=
+=C2=A0<b>2</b><strong>=C2=A0days from today</strong>.<br><a href=3D"https:/=
+/forms.gle/3M1zM2uiM4Qh82xC9">https://forms.gle/3M1zM2uiM4Qh82xC9</a></div>=
+<div><br><strong>!!! Only after filling this form will your participation b=
+e fully confirmed</strong><b>, so don=E2=80=99t sleep on it=C2=A0!!!</b><br=
+><p>Super excited to have you on board, can=E2=80=99t wait to build and chi=
+ll together in New Delhi=C2=A0=F0=9F=98=8E</p><p>If you=E2=80=99ve got any =
+questions or need help with anything, feel free to reply here.<br>Also, ple=
+ase join our=C2=A0<a href=3D"https://t.me/zkverifydev" target=3D"_blank">bu=
+ilders telegram group</a>=C2=A0for more updates.<br><br>Devrel Team,<br>Hor=
+izen=C2=A0x zkVerify</p></div></div>
+
+--000000000000b0cc20063dfc7a42--

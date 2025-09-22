@@ -8,6 +8,26 @@ zkSignals is a privacy-preserving platform that enables anonymous communication,
 
 ## [Demo Video](https://www.loom.com/share/7beff78996cb427681c9faafa3d730eb)
 
+## 📧 **Test EML Files**
+
+To help you test zkSignals, we've provided sample EML files for different email domains. Download and use these files when joining groups:
+
+
+### **📥 Download Ready-to-Use Files**
+
+Instead of copying, you can download these pre-made EML files:
+
+- **[residency.eml](./examples/residency.eml)** - For succint residency group
+- **[zkhh_india.eml](./examples/zkhh_india.eml)** - For zkVerify India hacker house group 
+- **[zkhh_vietnam.eml](./examples/zkhh_vietnam.eml)** - For zkVeify Vietnam hacker house group
+
+### **🔧 How to Use Test Files**
+
+1. **Download** the appropriate `.eml` file from the links above
+2. **Upload the EML file** when joining the group
+3. **ZK Email verification** will prove domain membership without revealing the actual email
+4. **Join anonymously** and start posting/voting!
+
 ## 🎯 **Why zkSignals?**
 
 In today's digital world, authentic anonymous communication is challenging. Traditional platforms either:
