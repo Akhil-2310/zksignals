@@ -2,93 +2,329 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
-import { Shield, Users, MessageSquare, Plus, ThumbsUp, ThumbsDown, ArrowLeft, User } from "lucide-react"
-
-// Mock data - will be replaced with database data later
-const mockGroupData = {
-  1: {
-    id: 1,
-    name: "YC W24 Batch",
-    description:
-      "Anonymous feedback and discussions for Y Combinator Winter 2024 batch members. Share honest thoughts about the program, network, and experiences.",
-    memberCount: 47,
-    posts: [
-      {
-        id: 1,
-        type: "post",
-        title: "Thoughts on the Demo Day experience",
-        content:
-          "I wanted to share some feedback about Demo Day. Overall it was great, but I think the timing could be improved...",
-        createdAt: "2024-03-14T10:30:00Z",
-        anonymous: true,
-      },
-      {
-        id: 2,
-        type: "proposal",
-        title: "Should we organize a post-batch meetup?",
-        content:
-          "I think it would be valuable to have an in-person meetup for our batch after the program ends. What do you all think?",
-        createdAt: "2024-03-13T15:45:00Z",
-        anonymous: true,
-        votes: {
-          yes: 23,
-          no: 5,
-        },
-        userVote: null, // null, 'yes', or 'no'
-      },
-      {
-        id: 3,
-        type: "proposal",
-        title: "Extend office hours by 2 hours daily?",
-        content:
-          "The current office hours feel a bit rushed. Would extending them by 2 hours daily help everyone get more value?",
-        createdAt: "2024-03-12T09:15:00Z",
-        anonymous: true,
-        votes: {
-          yes: 15,
-          no: 12,
-        },
-        userVote: "yes",
-      },
-    ],
-  },
-}
+import { Shield, Users, MessageSquare, Plus, ThumbsUp, ThumbsDown, ArrowLeft, User, Loader2 } from "lucide-react"
+import { getGroupById, getGroupPosts, createPost, castVote, isUserGroupMember, getGroupMembers, getUserIdentityCommitmentFromGroup, type Group, type Post } from "../../../lib/database"
+import { getCurrentAnonymousUser } from "../../../lib/auth"
+import { getOrCreateSemaphoreIdentity, generateSemaphoreProof, getSemaphoreIdentityFromStorage, createSemaphoreGroup, addMemberToGroup, generateSemaphoreProofDeterministic } from "../../../lib/semaphore"
+import { submitPostProof, submitVoteProof, waitForProofVerification } from "../../../lib/zk-verify"
 
 export default function GroupDetailPage() {
   const params = useParams()
-  const groupId = Number.parseInt(params.id as string)
-  const group = mockGroupData[groupId as keyof typeof mockGroupData]
-
+  const groupId = params.id as string
+  
+  const [group, setGroup] = useState<Group | null>(null)
+  const [posts, setPosts] = useState<Post[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isMember, setIsMember] = useState(false)
   const [showCreatePost, setShowCreatePost] = useState(false)
+  const [isCreatingPost, setIsCreatingPost] = useState(false)
+  const [isVoting, setIsVoting] = useState<string | null>(null)
+  const [error, setError] = useState("")
+  const [successMessage, setSuccessMessage] = useState("")
   const [newPost, setNewPost] = useState({
-    type: "post",
+    type: "post" as "post" | "proposal",
     title: "",
     content: "",
   })
 
-  const handleVote = (postId: number, vote: "yes" | "no") => {
-    // TODO: Implement voting logic with database
-    console.log(`Voting ${vote} on post ${postId}`)
-    alert(`Voted ${vote}! (This will be connected to database later)`)
+  // Load group data and check membership
+  useEffect(() => {
+    async function loadGroupData() {
+      try {
+        const user = getCurrentAnonymousUser()
+        
+        // Load group details
+        const groupData = await getGroupById(groupId)
+        if (!groupData) {
+          setError("Group not found")
+          return
+        }
+        setGroup(groupData)
+
+        // Check if user is a member
+        const membershipStatus = await isUserGroupMember(groupId, user.anonymousId)
+        setIsMember(membershipStatus)
+
+        if (membershipStatus) {
+          // Load posts if user is a member
+          const groupPosts = await getGroupPosts(groupId, user.anonymousId)
+          setPosts(groupPosts)
+        }
+
+      } catch (error) {
+        console.error('Error loading group data:', error)
+        setError('Failed to load group data')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadGroupData()
+  }, [groupId])
+
+  const handleVote = async (postId: string, vote: "yes" | "no") => {
+    if (!group || !isMember) return
+    
+    setIsVoting(postId)
+    setError("")
+    setSuccessMessage("")
+
+    try {
+      const user = getCurrentAnonymousUser()
+      
+      // Get Semaphore identity
+      const semaphoreIdentity = getSemaphoreIdentityFromStorage()
+      if (!semaphoreIdentity) {
+        throw new Error("Semaphore identity not found. Please rejoin the group.")
+      }
+
+      // Get group members to reconstruct Semaphore group
+      const groupMembers = await getGroupMembers(groupId)
+      const semaphoreGroup = createSemaphoreGroup() // Use depth 20 for Semaphore
+      
+      // Add all members to the group
+      for (const member of groupMembers) {
+        addMemberToGroup(semaphoreGroup, member.semaphore_identity_commitment)
+      }
+      
+      // Get the user's commitment from the database as source of truth
+      const dbUserCommitment = await getUserIdentityCommitmentFromGroup(groupId, user.anonymousId)
+      
+      if (!dbUserCommitment) {
+        throw new Error("You are not a member of this group. Please join the group first.")
+      }
+      
+      // Verify identity consistency
+      const calculatedCommitment = semaphoreIdentity.identity.commitment.toString()
+      
+      if (dbUserCommitment !== calculatedCommitment) {
+        console.warn('Identity commitment mismatch detected for voting. Database:', dbUserCommitment, 'Calculated:', calculatedCommitment)
+        throw new Error("Identity mismatch detected. Please clear your browser data and rejoin the group.")
+      }
+      
+      // Create message and scope for the vote proof (following working example)
+      const message = vote === "yes" ? 1 : 0 // Numeric values like working example
+      const scope = semaphoreGroup.root // Use group root as scope like working example
+      
+      // Generate Semaphore proof
+      const proofData = await generateSemaphoreProof(
+        semaphoreIdentity.identity,
+        semaphoreGroup,
+        message,
+        scope
+      )
+
+      // Submit proof to ZK Verify
+      const zkVerifyResult = await submitVoteProof(
+        proofData,
+        groupId,
+        postId,
+        vote
+      )
+
+      if (!zkVerifyResult.success) {
+        throw new Error(zkVerifyResult.error || "Failed to submit vote proof")
+      }
+
+      // Wait for verification using raw jobId
+      const verificationResult = await waitForProofVerification(zkVerifyResult.jobId || zkVerifyResult.proofHash)
+      if (!verificationResult.success) {
+        throw new Error(`Vote proof verification failed: ${verificationResult.error || verificationResult.status}`)
+      }
+
+      // Show success message with transaction hash
+      if (verificationResult.data?.txHash) {
+        const txHash = verificationResult.data.txHash
+        console.log(`Vote verified on-chain! Transaction: ${txHash}`)
+        setSuccessMessage(`Vote verified on-chain! Transaction: ${txHash}`)
+        // Clear success message after 10 seconds
+        setTimeout(() => setSuccessMessage(""), 10000)
+      }
+
+      // Cast vote in database
+      await castVote(
+        postId,
+        user.anonymousId,
+        vote,
+        JSON.stringify(proofData),
+        zkVerifyResult.proofHash
+      )
+
+      // Refresh posts to show updated vote counts
+      const updatedPosts = await getGroupPosts(groupId, user.anonymousId)
+      setPosts(updatedPosts)
+
+    } catch (error) {
+      console.error("Error voting:", error)
+      setError(error instanceof Error ? error.message : "Failed to cast vote")
+    } finally {
+      setIsVoting(null)
+    }
   }
 
-  const handleCreatePost = (e: React.FormEvent) => {
+  const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault()
-    // TODO: Implement post creation with database
-    console.log("Creating post:", newPost)
-    alert("Post created successfully! (This will be connected to database later)")
-    setNewPost({ type: "post", title: "", content: "" })
-    setShowCreatePost(false)
+    if (!group || !isMember) return
+
+    setIsCreatingPost(true)
+    setError("")
+
+    try {
+      const user = getCurrentAnonymousUser()
+      
+      // Get Semaphore identity
+      const semaphoreIdentity = getSemaphoreIdentityFromStorage()
+      if (!semaphoreIdentity) {
+        throw new Error("Semaphore identity not found. Please rejoin the group.")
+      }
+
+      // Get group members to reconstruct Semaphore group
+      const groupMembers = await getGroupMembers(groupId)
+      const semaphoreGroup = createSemaphoreGroup() // Use depth 20 for Semaphore
+      
+      // Add all members to the group
+      for (const member of groupMembers) {
+        addMemberToGroup(semaphoreGroup, member.semaphore_identity_commitment)
+      }
+      
+      // Get the user's commitment from the database as source of truth
+      const dbUserCommitment = await getUserIdentityCommitmentFromGroup(groupId, user.anonymousId)
+      
+      if (!dbUserCommitment) {
+        throw new Error("You are not a member of this group. Please join the group first.")
+      }
+      
+      // Verify identity consistency
+      const localCommitment = semaphoreIdentity.commitment
+      const calculatedCommitment = semaphoreIdentity.identity.commitment.toString()
+      
+      console.log('Identity debugging:', {
+        dbCommitment: dbUserCommitment,
+        localCommitment: localCommitment,
+        calculatedCommitment: calculatedCommitment,
+        dbMatchesLocal: dbUserCommitment === localCommitment,
+        dbMatchesCalculated: dbUserCommitment === calculatedCommitment,
+        localMatchesCalculated: localCommitment === calculatedCommitment
+      })
+      
+      // If there's a mismatch, we need to use the database commitment
+      if (dbUserCommitment !== calculatedCommitment) {
+        console.warn('Identity commitment mismatch detected. Database commitment:', dbUserCommitment, 'Calculated:', calculatedCommitment)
+        throw new Error("Identity mismatch detected. Please clear your browser data and rejoin the group.")
+      }
+      
+      console.log('Group reconstructed with', groupMembers.length, 'members, user commitment found:', dbUserCommitment)
+      
+      // Create message and scope for the post proof
+      // Use the SAME approach as working voting
+      const message = `${newPost.type}_${newPost.title}` // String message
+      const scope = "posts" // Different scope from voting to allow both
+      
+      // Generate Semaphore proof (same as voting)
+      const proofData = await generateSemaphoreProof(
+        semaphoreIdentity.identity,
+        semaphoreGroup,
+        message,
+        scope
+      )
+
+      // For posts, submit proof to ZK Verify for verification
+      // For proposals, skip ZK Verify (will be verified when people vote)
+      let zkVerifyProofHash = `local_semaphore_${Date.now()}`
+      
+      if (newPost.type === "post") {
+        // Use same approach as voting - pass proofData
+        const zkVerifyResult = await submitPostProof(proofData)
+
+        if (!zkVerifyResult.success) {
+          throw new Error(zkVerifyResult.error || "Failed to submit post proof")
+        }
+
+        // Wait for verification
+        const verificationResult = await waitForProofVerification(zkVerifyResult.jobId || zkVerifyResult.proofHash)
+        if (!verificationResult.success) {
+          throw new Error(`Post proof verification failed: ${verificationResult.error || verificationResult.status}`)
+        }
+        
+        // Show success message with transaction hash for posts
+        if (verificationResult.data?.txHash) {
+          const txHash = verificationResult.data.txHash
+          console.log(`Post verified on-chain! Transaction: ${txHash}`)
+          setSuccessMessage(`Post verified on-chain! Transaction: ${txHash}`)
+          // Clear success message after 10 seconds
+          setTimeout(() => setSuccessMessage(""), 10000)
+        }
+        
+        zkVerifyProofHash = zkVerifyResult.proofHash
+      } else {
+        // For proposals, just log that proof was generated locally
+        console.log('Proposal proof generated successfully:', proofData)
+      }
+
+      // Create post in database
+      await createPost({
+        group_id: groupId,
+        author_anonymous_id: user.anonymousId,
+        type: newPost.type,
+        title: newPost.title,
+        content: newPost.content,
+        semaphore_proof: JSON.stringify(proofData), // Store the proof data
+        zk_verify_proof_hash: zkVerifyProofHash
+      })
+
+      // Refresh posts
+      const updatedPosts = await getGroupPosts(groupId, user.anonymousId)
+      setPosts(updatedPosts)
+
+      // Reset form
+      setNewPost({ type: "post", title: "", content: "" })
+      setShowCreatePost(false)
+
+    } catch (error) {
+      console.error("Error creating post:", error)
+      setError(error instanceof Error ? error.message : "Failed to create post")
+    } finally {
+      setIsCreatingPost(false)
+    }
   }
 
-  if (!group) {
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="flex items-center gap-3">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          <span className="text-muted-foreground">Loading group...</span>
+        </div>
+      </div>
+    )
+  }
+
+  if (!group || error) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-foreground mb-2">Group not found</h1>
+          <h1 className="text-2xl font-bold text-foreground mb-2">
+            {error || "Group not found"}
+          </h1>
+          <Link href="/groups" className="text-primary hover:underline">
+            Browse all groups
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isMember) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-foreground mb-2">Access Restricted</h1>
+          <p className="text-muted-foreground mb-4">
+            You must be a member of this group to view its content.
+          </p>
           <Link href="/groups" className="text-primary hover:underline">
             Browse all groups
           </Link>
@@ -134,10 +370,10 @@ export default function GroupDetailPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-bold text-foreground mb-2">{group.name}</h1>
-              <div className="flex items-center text-muted-foreground text-sm">
-                <Users className="h-4 w-4 mr-1" />
-                {group.memberCount} members
-              </div>
+            <div className="flex items-center text-muted-foreground text-sm">
+              <Users className="h-4 w-4 mr-1" />
+              {group.member_count} members
+            </div>
             </div>
             <button
               onClick={() => setShowCreatePost(true)}
@@ -149,9 +385,35 @@ export default function GroupDetailPage() {
           </div>
         </div>
 
+        {/* Error Display */}
+        {error && (
+          <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4 mb-6">
+            <p className="text-sm text-destructive">{error}</p>
+          </div>
+        )}
+
+        {/* Success Display */}
+        {successMessage && (
+          <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4 mb-6">
+            <p className="text-sm text-green-600">
+              {successMessage}
+              {successMessage.includes('Transaction:') && (
+                <a 
+                  href={`https://zkverify-testnet.subscan.io/extrinsic/${successMessage.split('Transaction: ')[1]}`}
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="ml-2 underline hover:text-green-700"
+                >
+                  View on Explorer
+                </a>
+              )}
+            </p>
+          </div>
+        )}
+
         {/* Posts Feed */}
         <div className="space-y-6">
-          {group.posts.map((post) => (
+          {posts.map((post) => (
             <div key={post.id} className="bg-card border border-border rounded-lg p-6">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-2">
@@ -161,7 +423,7 @@ export default function GroupDetailPage() {
                     <span className="bg-chart-1 text-white text-xs px-2 py-1 rounded-full">Proposal</span>
                   )}
                 </div>
-                <div className="text-sm text-muted-foreground">{new Date(post.createdAt).toLocaleDateString()}</div>
+                <div className="text-sm text-muted-foreground">{new Date(post.created_at).toLocaleDateString()}</div>
               </div>
 
               <h3 className="text-lg font-semibold text-card-foreground mb-3">{post.title}</h3>
@@ -171,30 +433,49 @@ export default function GroupDetailPage() {
                 <div className="border-t border-border pt-4">
                   <div className="flex items-center justify-between mb-4">
                     <div className="text-sm text-muted-foreground">{post.votes.yes + post.votes.no} votes cast</div>
+                    {post.user_vote && (
+                      <div className="text-xs bg-blue-500/10 border border-blue-500/20 text-blue-600 px-2 py-1 rounded">
+                        Already Voted
+                      </div>
+                    )}
                   </div>
 
                   <div className="flex gap-4 mb-4">
                     <button
                       onClick={() => handleVote(post.id, "yes")}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
-                        post.userVote === "yes"
+                      disabled={isVoting === post.id || !!post.user_vote}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                        post.user_vote === "yes"
                           ? "bg-green-500/10 border-green-500/20 text-green-600"
+                          : post.user_vote
+                          ? "border-border opacity-50"
                           : "border-border hover:bg-accent"
                       }`}
                     >
-                      <ThumbsUp className="h-4 w-4" />
-                      Yes ({post.votes.yes})
+                      {isVoting === post.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <ThumbsUp className="h-4 w-4" />
+                      )}
+                      Yes
                     </button>
                     <button
                       onClick={() => handleVote(post.id, "no")}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors ${
-                        post.userVote === "no"
+                      disabled={isVoting === post.id || !!post.user_vote}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                        post.user_vote === "no"
                           ? "bg-red-500/10 border-red-500/20 text-red-600"
+                          : post.user_vote
+                          ? "border-border opacity-50"
                           : "border-border hover:bg-accent"
                       }`}
                     >
-                      <ThumbsDown className="h-4 w-4" />
-                      No ({post.votes.no})
+                      {isVoting === post.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <ThumbsDown className="h-4 w-4" />
+                      )}
+                      No
                     </button>
                   </div>
 
@@ -218,7 +499,7 @@ export default function GroupDetailPage() {
         </div>
 
         {/* Empty State */}
-        {group.posts.length === 0 && (
+        {posts.length === 0 && (
           <div className="text-center py-12">
             <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-medium text-foreground mb-2">No posts yet</h3>
@@ -250,10 +531,10 @@ export default function GroupDetailPage() {
                         name="type"
                         value="post"
                         checked={newPost.type === "post"}
-                        onChange={(e) => setNewPost((prev) => ({ ...prev, type: e.target.value }))}
+                        onChange={(e) => setNewPost((prev) => ({ ...prev, type: e.target.value as "post" | "proposal" }))}
                         className="mr-2"
                       />
-                      <span className="text-sm">Discussion Post</span>
+                      <span className="text-sm">Discussion Post (ZK Verified)</span>
                     </label>
                     <label className="flex items-center">
                       <input
@@ -261,47 +542,64 @@ export default function GroupDetailPage() {
                         name="type"
                         value="proposal"
                         checked={newPost.type === "proposal"}
-                        onChange={(e) => setNewPost((prev) => ({ ...prev, type: e.target.value }))}
+                        onChange={(e) => setNewPost((prev) => ({ ...prev, type: e.target.value as "post" | "proposal" }))}
                         className="mr-2"
                       />
-                      <span className="text-sm">Proposal (Yes/No Vote)</span>
+                      <span className="text-sm">Proposal (Voting ZK Verified)</span>
                     </label>
                   </div>
                 </div>
 
-                <div>
-                  <label htmlFor="title" className="block text-sm font-medium text-card-foreground mb-2">
-                    Title *
-                  </label>
-                  <input
-                    type="text"
-                    id="title"
-                    required
-                    value={newPost.title}
-                    onChange={(e) => setNewPost((prev) => ({ ...prev, title: e.target.value }))}
-                    placeholder="Enter a clear, descriptive title..."
-                    className="w-full px-4 py-3 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground"
-                  />
-                </div>
+                {newPost.type === "post" ? (
+                  // Single input for posts
+                  <div>
+                    <label htmlFor="content" className="block text-sm font-medium text-card-foreground mb-2">
+                      Post Content (Will be ZK Verified) *
+                    </label>
+                    <textarea
+                      id="content"
+                      required
+                      rows={6}
+                      value={newPost.title}
+                      onChange={(e) => setNewPost((prev) => ({ ...prev, title: e.target.value, content: e.target.value }))}
+                      placeholder="What's your post about? This will be verified on-chain..."
+                      className="w-full px-4 py-3 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground resize-none"
+                    />
+                  </div>
+                ) : (
+                  // Title and content for proposals
+                  <>
+                    <div>
+                      <label htmlFor="title" className="block text-sm font-medium text-card-foreground mb-2">
+                        Proposal Title *
+                      </label>
+                      <input
+                        type="text"
+                        id="title"
+                        required
+                        value={newPost.title}
+                        onChange={(e) => setNewPost((prev) => ({ ...prev, title: e.target.value }))}
+                        placeholder="Enter proposal title..."
+                        className="w-full px-4 py-3 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground"
+                      />
+                    </div>
 
-                <div>
-                  <label htmlFor="content" className="block text-sm font-medium text-card-foreground mb-2">
-                    Content *
-                  </label>
-                  <textarea
-                    id="content"
-                    required
-                    rows={6}
-                    value={newPost.content}
-                    onChange={(e) => setNewPost((prev) => ({ ...prev, content: e.target.value }))}
-                    placeholder={
-                      newPost.type === "proposal"
-                        ? "Describe your proposal and what you're asking the group to vote on..."
-                        : "Share your thoughts, feedback, or start a discussion..."
-                    }
-                    className="w-full px-4 py-3 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground resize-none"
-                  />
-                </div>
+                    <div>
+                      <label htmlFor="content" className="block text-sm font-medium text-card-foreground mb-2">
+                        Proposal Description *
+                      </label>
+                      <textarea
+                        id="content"
+                        required
+                        rows={6}
+                        value={newPost.content}
+                        onChange={(e) => setNewPost((prev) => ({ ...prev, content: e.target.value }))}
+                        placeholder="Describe your proposal. Members will vote Yes or No (votes are ZK verified)..."
+                        className="w-full px-4 py-3 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground resize-none"
+                      />
+                    </div>
+                  </>
+                )}
 
                 <div className="bg-muted/30 p-3 rounded-lg">
                   <p className="text-sm text-muted-foreground">
@@ -323,9 +621,17 @@ export default function GroupDetailPage() {
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+                    disabled={isCreatingPost}
+                    className="flex-1 bg-primary text-primary-foreground px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
-                    {newPost.type === "proposal" ? "Create Proposal" : "Create Post"}
+                    {isCreatingPost ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      newPost.type === "proposal" ? "Create Proposal" : "Create Post"
+                    )}
                   </button>
                 </div>
               </form>
