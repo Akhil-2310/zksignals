@@ -4,41 +4,59 @@ import type React from "react"
 
 import { useState } from "react"
 import Link from "next/link"
-import { ArrowLeft, Shield, Plus, X } from "lucide-react"
+import { ArrowLeft, Shield, Plus, X, Loader2 } from "lucide-react"
+import { createGroup } from "../../lib/database"
+import { getCurrentAnonymousUser } from "../../lib/auth"
+import { validateBlueprintFormat, BLUEPRINT_EXAMPLES } from "../../lib/zk-email"
+import { createSemaphoreGroup, serializeGroup } from "../../lib/semaphore"
 
 export default function CreateGroupPage() {
   const [formData, setFormData] = useState({
     name: "",
     description: "",
-    restrictions: [""],
+    emailBlueprint: "",
   })
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState("")
 
-  const addRestriction = () => {
-    setFormData((prev) => ({
-      ...prev,
-      restrictions: [...prev.restrictions, ""],
-    }))
-  }
-
-  const removeRestriction = (index: number) => {
-    setFormData((prev) => ({
-      ...prev,
-      restrictions: prev.restrictions.filter((_, i) => i !== index),
-    }))
-  }
-
-  const updateRestriction = (index: number, value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      restrictions: prev.restrictions.map((restriction, i) => (i === index ? value : restriction)),
-    }))
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // TODO: Handle form submission
-    console.log("Creating group:", formData)
-    alert("Group created successfully! (This will be connected to database later)")
+    setIsSubmitting(true)
+    setError("")
+
+    try {
+      // Validate blueprint format
+      if (!validateBlueprintFormat(formData.emailBlueprint)) {
+        throw new Error("Invalid blueprint format. Please use: username/blueprint-name@version")
+      }
+
+      // Get current user
+      const user = getCurrentAnonymousUser()
+      
+      // Create Semaphore group
+      const semaphoreGroup = createSemaphoreGroup()
+      const semaphoreGroupId = `semaphore_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
+      // Create group in database
+      const newGroup = await createGroup({
+        name: formData.name,
+        description: formData.description,
+        email_blueprint: formData.emailBlueprint,
+        semaphore_group_id: semaphoreGroupId,
+        creator_anonymous_id: user.anonymousId
+      })
+
+      console.log("Group created successfully:", newGroup)
+      
+      // Redirect to groups page or show success message
+      window.location.href = "/groups"
+      
+    } catch (error) {
+      console.error("Error creating group:", error)
+      setError(error instanceof Error ? error.message : "Failed to create group")
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -113,51 +131,66 @@ export default function CreateGroupPage() {
             />
           </div>
 
-          {/* Email Restrictions */}
+          {/* Email Blueprint */}
           <div>
-            <label className="block text-sm font-medium text-foreground mb-2">Email Blueprint *</label>
-            <div className="space-y-3">
-              {formData.restrictions.map((restriction, index) => (
-                <div key={index} className="flex gap-2">
-                  <input
-                    type="text"
-                    required
-                    value={restriction}
-                    onChange={(e) => updateRestriction(index, e.target.value)}
-                    placeholder="<github-username>/<blueprint-name>@version"
-                    className="flex-1 px-4 py-3 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground"
-                  />
-                  {formData.restrictions.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removeRestriction(index)}
-                      className="px-3 py-3 text-muted-foreground hover:text-destructive transition-colors"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
+            <label htmlFor="emailBlueprint" className="block text-sm font-medium text-foreground mb-2">
+              Email Blueprint *
+            </label>
+            <input
+              type="text"
+              id="emailBlueprint"
+              required
+              value={formData.emailBlueprint}
+              onChange={(e) => setFormData((prev) => ({ ...prev, emailBlueprint: e.target.value }))}
+              placeholder="username/blueprint-name@version"
+              className="w-full px-4 py-3 bg-background border border-input rounded-lg focus:outline-none focus:ring-2 focus:ring-ring text-foreground placeholder:text-muted-foreground"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Format: GitHub username/repository-name@version (e.g., zkemail/yc-demo-day@v1.0.0)
+            </p>
           </div>
 
-          {/* Examples */}
+          {/* Blueprint Examples */}
           <div className="bg-muted/30 p-4 rounded-lg">
-            <h3 className="text-sm font-medium text-foreground mb-2">Example Requirements:</h3>
+            <h3 className="text-sm font-medium text-foreground mb-2">Example Blueprints:</h3>
             <ul className="text-sm text-muted-foreground space-y-1">
-            <li>• Alumni from specific program or residency</li>
-              <li>• Attended YC Demo Day 2024</li>
-              <li>• Participated in ETH Global hackathon</li>
+              {BLUEPRINT_EXAMPLES.map((example, index) => (
+                <li key={index} className="flex items-center justify-between">
+                  <span>• {example}</span>
+                  <button
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, emailBlueprint: example }))}
+                    className="text-xs text-primary hover:text-primary/80 transition-colors ml-2"
+                  >
+                    Use
+                  </button>
+                </li>
+              ))}
             </ul>
           </div>
+
+          {/* Error Message */}
+          {error && (
+            <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3">
+              <p className="text-sm text-destructive">{error}</p>
+            </div>
+          )}
 
           {/* Submit Button */}
           <div className="flex gap-4 pt-6">
             <button
               type="submit"
-              className="flex-1 bg-primary text-primary-foreground py-3 px-6 rounded-lg hover:bg-primary/90 transition-colors font-medium"
+              disabled={isSubmitting}
+              className="flex-1 bg-primary text-primary-foreground py-3 px-6 rounded-lg hover:bg-primary/90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              Create Group
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Creating Group...
+                </>
+              ) : (
+                "Create Group"
+              )}
             </button>
             <Link
               href="/"
