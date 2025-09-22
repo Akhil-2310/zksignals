@@ -6,6 +6,8 @@ zkSignals is a privacy-preserving platform that enables anonymous communication,
 
 ---
 
+## [Demo Video](https://www.loom.com/share/7beff78996cb427681c9faafa3d730eb)
+
 ## 🎯 **Why zkSignals?**
 
 In today's digital world, authentic anonymous communication is challenging. Traditional platforms either:
