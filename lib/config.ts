@@ -45,6 +45,7 @@ export const config = {
   semaphore: {
     defaultVkHash: defaultSemaphoreVkHash,
     vkHashes: semaphoreVkHashes,
+    vkHash: '0xe8feeb86e417bd8bb91670d860cb74e9fac3b127a91cb7f593e59070533a61cf', // fallback
   },
   app: {
     url: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
