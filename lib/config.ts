@@ -1,5 +1,4 @@
 const defaultSemaphoreVkHash = process.env.NEXT_PUBLIC_SEMAPHORE_VK_HASH
-console.log(process.env.NEXT_PUBLIC_SEMAPHORE_VK_HASHES );
 
 
 // Accepts SEMAPHORE_VK_HASHES='{"3":"0x...","20":"0x..."}' to map depth→vk hash
@@ -45,7 +44,7 @@ export const config = {
   semaphore: {
     defaultVkHash: defaultSemaphoreVkHash,
     vkHashes: semaphoreVkHashes,
-    vkHash: '0xe8feeb86e417bd8bb91670d860cb74e9fac3b127a91cb7f593e59070533a61cf', // fallback
+    vkHash: '0x5c2970f3e098f11e33e3758366d2e514850188af36f7399293cda27961004932', // fallback
   },
   app: {
     url: process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000',
