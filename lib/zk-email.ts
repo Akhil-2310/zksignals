@@ -1,13 +1,25 @@
+import { JsonRpcProvider } from 'ethers'
+
 import { config } from './config'
+import {
+  AggregationArtifacts,
+  aggregationArtifactsToParams,
+  computeAggregationLeaf,
+  extractAggregationArtifacts,
+  normalizePublicSignals,
+  verifyProofAggregationOnChain,
+} from './zk-aggregation'
+
+export interface EmailProofArtifacts {
+  proof: any
+  publicSignals: string[]
+  vkHash: string
+}
 
 export interface EmailVerificationResult {
   isValid: boolean
   jobId: string
-  proofData?: {
-    proof: any
-    publicSignals: any[]
-    vkHash: string
-  }
+  proofData?: EmailProofArtifacts
   error?: string
 }
 
@@ -25,6 +37,25 @@ type ZkEmailProof = {
     publicData?: any[]
   }
 }
+
+export interface EmailVerificationStatusData {
+  raw: any
+  aggregation?: AggregationArtifacts
+}
+
+export interface VerificationPollingOptions {
+  maxAttempts?: number
+  intervalMs?: number
+  proofData?: Pick<EmailProofArtifacts, 'publicSignals' | 'vkHash'>
+}
+
+// Re-export helpers for convenience
+export {
+  aggregationArtifactsToParams,
+  computeAggregationLeaf,
+  verifyProofAggregationOnChain,
+} from './zk-aggregation'
+export type { AggregationArtifacts } from './zk-aggregation'
 
 export function parseEmailBlueprint(blueprintString: string): EmailBlueprint {
   // Parse format: username/blueprint-name@version
@@ -65,10 +96,10 @@ async function ensureVkHash(vkeyObj: any, blueprintSlug: string): Promise<string
 
   // Register the vkey with ZK Verify relayer
   const regParams = {
-    proofType: "groth16",
+    proofType: 'groth16',
     proofOptions: {
-      library: "snarkjs",
-      curve: "bn128",
+      library: 'snarkjs',
+      curve: 'bn128',
     },
     vk: vkeyObj,
   }
@@ -93,8 +124,8 @@ async function ensureVkHash(vkeyObj: any, blueprintSlug: string): Promise<string
     // Check if it's the "already registered" error
     try {
       const errorData = JSON.parse(errorText)
-      if (errorData.code === "REGISTER_VK_FAILED" && 
-          errorData.message?.includes("already registered") &&
+      if (errorData.code === 'REGISTER_VK_FAILED' && 
+          errorData.message?.includes('already registered') &&
           errorData.meta?.vkHash) {
         // VK is already registered, use the existing hash
         vkHash = errorData.meta.vkHash
@@ -147,25 +178,31 @@ export async function verifyEmailWithBlueprint(
     
     // Extract proof components
     const snarkProof = proof.props.proofData
-    const publicSignals = proof.props.publicOutputs ?? proof.props.publicData
+    const publicSignalsRaw = proof.props.publicOutputs ?? proof.props.publicData
     
-    if (!snarkProof || !publicSignals) {
+    if (!snarkProof || !publicSignalsRaw) {
       throw new Error('Missing proofData or public signals from zkEmail proof')
     }
+
+    const publicSignals = normalizePublicSignals(publicSignalsRaw)
     
     // Submit proof to ZK Verify relayer
-    const submitParams = {
-      proofType: "groth16",
+    const submitParams: Record<string, unknown> = {
+      proofType: 'groth16',
       vkRegistered: true, // We're using a registered vkHash
       proofOptions: {
-        library: "snarkjs",
-        curve: "bn128",
+        library: 'snarkjs',
+        curve: 'bn128',
       },
       proofData: {
         proof: snarkProof,
         publicSignals,
         vk: vkHash, // Pass the vkHash (not the full vkey)
       },
+    }
+
+    if (config.zkVerify.chainId) {
+      submitParams.chainId = config.zkVerify.chainId
     }
     
     const submitResponse = await fetch(
@@ -185,7 +222,7 @@ export async function verifyEmailWithBlueprint(
     
     const submitData = await submitResponse.json()
     
-    if (submitData.optimisticVerify !== "success") {
+    if (submitData.optimisticVerify !== 'success') {
       return {
         isValid: false,
         jobId: '',
@@ -216,9 +253,14 @@ export async function verifyEmailWithBlueprint(
 // Poll job status until completion
 export async function waitForEmailVerification(
   jobId: string,
-  maxAttempts: number = 20,
-  intervalMs: number = 5000
-): Promise<{ success: boolean; status: string; data?: any; error?: string }> {
+  options: VerificationPollingOptions = {}
+): Promise<{ success: boolean; status: string; data?: EmailVerificationStatusData; error?: string }> {
+  const {
+    maxAttempts = 60,
+    intervalMs = 5000,
+    proofData,
+  } = options
+
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
       const statusResponse = await fetch(
@@ -234,17 +276,53 @@ export async function waitForEmailVerification(
       
       console.log(`Email verification job status: ${status}`)
       
+      const result: EmailVerificationStatusData = { raw: statusData }
+
+      if (status === 'Aggregated') {
+        const aggregation = extractAggregationArtifacts(statusData)
+
+        if (aggregation && proofData) {
+          try {
+            const computedLeaf = computeAggregationLeaf(proofData.publicSignals, proofData.vkHash)
+            aggregation.computedLeaf = computedLeaf
+            aggregation.leafMatches = aggregation.leaf.toLowerCase() === computedLeaf.toLowerCase()
+          } catch (error) {
+            console.warn('Failed to recompute aggregation leaf', error)
+          }
+        }
+
+        if (aggregation) {
+          if (config.zkVerify.rpcUrl) {
+            try {
+              const provider = new JsonRpcProvider(config.zkVerify.rpcUrl)
+              const verified = await verifyProofAggregationOnChain({
+                ...aggregationArtifactsToParams(aggregation),
+                runner: provider,
+              })
+              aggregation.onChainVerified = verified
+              console.log('Email aggregation on-chain verification result:', verified)
+            } catch (error) {
+              const message = error instanceof Error ? error.message : 'Unknown error'
+              aggregation.onChainVerificationError = message
+              console.warn('Failed to verify email aggregation on-chain', error)
+            }
+          }
+
+          result.aggregation = aggregation
+        }
+      }
+
       // Check for completion statuses
-      if (status === "Finalized" || status === "Aggregated") {
+      if (status === 'Finalized' || status === 'Aggregated') {
         return {
           success: true,
           status,
-          data: statusData
+          data: result
         }
       }
       
       // Check for failure statuses
-      if (status === "Failed" || status === "Rejected") {
+      if (status === 'Failed' || status === 'Rejected') {
         return {
           success: false,
           status,

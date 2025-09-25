@@ -1,12 +1,26 @@
 import axios from 'axios'
+import { JsonRpcProvider } from 'ethers'
+
 import { config } from './config'
 import { SemaphoreProofData } from './semaphore'
+import {
+  aggregationArtifactsToParams,
+  computeAggregationLeaf,
+  extractAggregationArtifacts,
+  normalizePublicSignals,
+  verifyProofAggregationOnChain,
+} from './zk-aggregation'
 
 export interface ZKVerifySubmissionResult {
   success: boolean
   proofHash: string
   jobId?: string // Raw jobId for polling status
   transactionId?: string
+  aggregation?: {
+    vkHash: string
+    publicSignals: string[]
+    treeDepth?: number
+  }
   error?: string
 }
 
@@ -119,7 +133,7 @@ export async function checkProofStatus(proofHash: string): Promise<ZKVerifyProof
 }
 
 // Get Semaphore vkHash from config
-function getSemaphoreVkHash(depth?: number): string {
+export function getSemaphoreVkHash(depth?: number): string {
   if (depth !== undefined) {
     const mapped = config.semaphore.vkHashes[depth]
     if (mapped) {
@@ -142,16 +156,21 @@ export async function submitGroupJoinProof(
 ): Promise<ZKVerifySubmissionResult> {
   try {
     const vkHash = getSemaphoreVkHash(semaphoreProof.merkleTreeDepth)
+    const publicSignals = normalizePublicSignals(semaphoreProof.publicSignals)
 
-    const submitParams = {
+    const submitParams: Record<string, unknown> = {
       proofType: 'groth16',
       vkRegistered: true,
       proofOptions: { library: 'snarkjs', curve: 'bn128' },
       proofData: {
         proof: semaphoreProof.proof,
-        publicSignals: semaphoreProof.publicSignals,
+        publicSignals,
         vk: vkHash
       }
+    }
+
+    if (config.zkVerify.chainId) {
+      submitParams.chainId = config.zkVerify.chainId
     }
 
     const response = await fetch(
@@ -180,7 +199,13 @@ export async function submitGroupJoinProof(
     return {
       success: true,
       proofHash: `semaphore_${data.jobId}`,
-      transactionId: data.jobId
+      jobId: data.jobId,
+      transactionId: data.jobId,
+      aggregation: {
+        vkHash,
+        publicSignals,
+        treeDepth: semaphoreProof.merkleTreeDepth,
+      }
     }
 
   } catch (error) {
@@ -199,16 +224,21 @@ export async function submitPostProof(
 ): Promise<ZKVerifySubmissionResult> {
   try {
     const vkHash = getSemaphoreVkHash(semaphoreProof.merkleTreeDepth)
+    const publicSignals = normalizePublicSignals(semaphoreProof.publicSignals)
 
-    const submitParams = {
+    const submitParams: Record<string, unknown> = {
       proofType: 'groth16',
       vkRegistered: true,
       proofOptions: { library: 'snarkjs', curve: 'bn128' },
       proofData: {
         proof: semaphoreProof.proof,
-        publicSignals: semaphoreProof.publicSignals,
+        publicSignals,
         vk: vkHash
       }
+    }
+
+    if (config.zkVerify.chainId) {
+      submitParams.chainId = config.zkVerify.chainId
     }
 
     console.log('Submitting Semaphore post proof:', {
@@ -216,7 +246,7 @@ export async function submitPostProof(
       merkleTreeDepth: semaphoreProof.merkleTreeDepth,
       proofData: {
         proof: semaphoreProof.proof,
-        publicSignals: semaphoreProof.publicSignals
+        publicSignals
       }
     })
 
@@ -260,7 +290,12 @@ export async function submitPostProof(
       success: true,
       proofHash: `post_${data.jobId}`,
       jobId: data.jobId, // Add raw jobId for polling
-      transactionId: data.jobId
+      transactionId: data.jobId,
+      aggregation: {
+        vkHash,
+        publicSignals,
+        treeDepth: semaphoreProof.merkleTreeDepth,
+      }
     }
 
   } catch (error) {
@@ -282,16 +317,21 @@ export async function submitVoteProof(
 ): Promise<ZKVerifySubmissionResult> {
   try {
     const vkHash = getSemaphoreVkHash(semaphoreProof.merkleTreeDepth)
+    const publicSignals = normalizePublicSignals(semaphoreProof.publicSignals)
 
-    const submitParams = {
+    const submitParams: Record<string, unknown> = {
       proofType: 'groth16',
       vkRegistered: true,
       proofOptions: { library: 'snarkjs', curve: 'bn128' },
       proofData: {
         proof: semaphoreProof.proof,
-        publicSignals: semaphoreProof.publicSignals,
+        publicSignals,
         vk: vkHash // pass the hash, not the whole vkey
       }
+    }
+
+    if (config.zkVerify.chainId) {
+      submitParams.chainId = config.zkVerify.chainId
     }
 
     console.log('Submitting Semaphore vote proof:', {
@@ -299,7 +339,7 @@ export async function submitVoteProof(
       merkleTreeDepth: semaphoreProof.merkleTreeDepth,
       proofData: {
         proof: semaphoreProof.proof,
-        publicSignals: semaphoreProof.publicSignals
+        publicSignals
       }
     })
 
@@ -337,7 +377,12 @@ export async function submitVoteProof(
       success: true,
       proofHash: `vote_${data.jobId}`,
       jobId: data.jobId, // Add raw jobId for polling
-      transactionId: data.jobId
+      transactionId: data.jobId,
+      aggregation: {
+        vkHash,
+        publicSignals,
+        treeDepth: semaphoreProof.merkleTreeDepth,
+      }
     }
 
   } catch (error) {
@@ -406,9 +451,22 @@ export async function batchVerifyProofs(proofHashes: string[]): Promise<{
 // Helper function to wait for proof verification using ZK Verify job status
 export async function waitForProofVerification(
   jobId: string,
-  maxAttempts: number = 20,
-  intervalMs: number = 5000
+  options: {
+    maxAttempts?: number
+    intervalMs?: number
+    aggregation?: {
+      vkHash: string
+      publicSignals: string[]
+      treeDepth?: number
+    }
+  } = {}
 ): Promise<{ success: boolean; status: string; data?: any; error?: string }> {
+  const {
+    maxAttempts = 60,
+    intervalMs = 5000,
+    aggregation,
+  } = options
+
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     try {
       const statusResponse = await fetch(
@@ -423,18 +481,57 @@ export async function waitForProofVerification(
       const status = statusData.status
       
       console.log(`ZK Verify job status: ${status}`)
+
+      const enrichedStatus: any = { ...statusData, raw: statusData }
+
+      if (status === 'Aggregated') {
+        const aggregationArtifacts = extractAggregationArtifacts(statusData, {
+          treeDepth: aggregation?.treeDepth,
+        })
+
+        if (aggregationArtifacts && aggregation) {
+          try {
+            const computedLeaf = computeAggregationLeaf(aggregation.publicSignals, aggregation.vkHash)
+            aggregationArtifacts.computedLeaf = computedLeaf
+            aggregationArtifacts.leafMatches = aggregationArtifacts.leaf.toLowerCase() === computedLeaf.toLowerCase()
+          } catch (error) {
+            console.warn('Failed to recompute aggregation leaf', error)
+          }
+        }
+
+        if (aggregationArtifacts) {
+          if (config.zkVerify.rpcUrl) {
+            try {
+              const provider = new JsonRpcProvider(config.zkVerify.rpcUrl)
+              const verified = await verifyProofAggregationOnChain({
+                ...aggregationArtifactsToParams(aggregationArtifacts),
+                runner: provider,
+                treeDepth: aggregation?.treeDepth,
+              })
+              aggregationArtifacts.onChainVerified = verified
+              console.log('Aggregation on-chain verification result:', verified)
+            } catch (error) {
+              const message = error instanceof Error ? error.message : 'Unknown error'
+              aggregationArtifacts.onChainVerificationError = message
+              console.warn('Failed to verify aggregation on-chain', error)
+            }
+          }
+
+          enrichedStatus.aggregation = aggregationArtifacts
+        }
+      }
       
       // Check for completion statuses
-      if (status === "Finalized" || status === "Aggregated") {
+      if (status === 'Finalized' || status === 'Aggregated') {
         return {
           success: true,
           status,
-          data: statusData
+          data: enrichedStatus
         }
       }
       
       // Check for failure statuses
-      if (status === "Failed" || status === "Rejected") {
+      if (status === 'Failed' || status === 'Rejected') {
         return {
           success: false,
           status,
