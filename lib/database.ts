@@ -268,11 +268,16 @@ export async function storeSemaphoreIdentity(
 ): Promise<void> {
   const { error } = await supabase
     .from('semaphore_identities')
-    .insert({
-      user_anonymous_id: userAnonymousId,
-      identity_commitment: identityCommitment,
-      identity_secret: encryptedSecret
-    })
+    .upsert(
+      {
+        user_anonymous_id: userAnonymousId,
+        identity_commitment: identityCommitment,
+        identity_secret: encryptedSecret
+      },
+      {
+        onConflict: 'user_anonymous_id'
+      }
+    )
 
   if (error) {
     console.error('Error storing Semaphore identity:', error)
@@ -356,4 +361,3 @@ export async function getGroupMembers(groupId: string): Promise<GroupMembership[
 export function generateAnonymousId(): string {
   return `anon_${Math.random().toString(36).substr(2, 9)}_${Date.now()}`
 }
-  
