@@ -1,26 +1,14 @@
 import axios from 'axios'
-import { JsonRpcProvider } from 'ethers'
 
 import { config } from './config'
 import { SemaphoreProofData } from './semaphore'
-import {
-  aggregationArtifactsToParams,
-  computeAggregationLeaf,
-  extractAggregationArtifacts,
-  normalizePublicSignals,
-  verifyProofAggregationOnChain,
-} from './zk-aggregation'
+import { normalizePublicSignals } from './zk-aggregation'
 
 export interface ZKVerifySubmissionResult {
   success: boolean
   proofHash: string
   jobId?: string // Raw jobId for polling status
   transactionId?: string
-  aggregation?: {
-    vkHash: string
-    publicSignals: string[]
-    treeDepth?: number
-  }
   error?: string
 }
 
@@ -169,9 +157,8 @@ export async function submitGroupJoinProof(
       }
     }
 
-    if (config.zkVerify.chainId) {
-      submitParams.chainId = config.zkVerify.chainId
-    }
+    // Note: chainId is intentionally NOT included to avoid aggregation
+    // When chainId is omitted, zkVerify will finalize the proof directly without aggregation
 
     const response = await fetch(
       `${config.zkVerify.relayerUrl}/submit-proof/${config.zkVerify.apiKey}`,
@@ -200,12 +187,7 @@ export async function submitGroupJoinProof(
       success: true,
       proofHash: `semaphore_${data.jobId}`,
       jobId: data.jobId,
-      transactionId: data.jobId,
-      aggregation: {
-        vkHash,
-        publicSignals,
-        treeDepth: semaphoreProof.merkleTreeDepth,
-      }
+      transactionId: data.jobId
     }
 
   } catch (error) {
@@ -237,9 +219,8 @@ export async function submitPostProof(
       }
     }
 
-    if (config.zkVerify.chainId) {
-      submitParams.chainId = config.zkVerify.chainId
-    }
+    // Note: chainId is intentionally NOT included to avoid aggregation
+    // When chainId is omitted, zkVerify will finalize the proof directly without aggregation
 
     console.log('Submitting Semaphore post proof:', {
       vkHash,
@@ -290,12 +271,7 @@ export async function submitPostProof(
       success: true,
       proofHash: `post_${data.jobId}`,
       jobId: data.jobId, // Add raw jobId for polling
-      transactionId: data.jobId,
-      aggregation: {
-        vkHash,
-        publicSignals,
-        treeDepth: semaphoreProof.merkleTreeDepth,
-      }
+      transactionId: data.jobId
     }
 
   } catch (error) {
@@ -330,9 +306,8 @@ export async function submitVoteProof(
       }
     }
 
-    if (config.zkVerify.chainId) {
-      submitParams.chainId = config.zkVerify.chainId
-    }
+    // Note: chainId is intentionally NOT included to avoid aggregation
+    // When chainId is omitted, zkVerify will finalize the proof directly without aggregation
 
     console.log('Submitting Semaphore vote proof:', {
       vkHash,
@@ -377,12 +352,7 @@ export async function submitVoteProof(
       success: true,
       proofHash: `vote_${data.jobId}`,
       jobId: data.jobId, // Add raw jobId for polling
-      transactionId: data.jobId,
-      aggregation: {
-        vkHash,
-        publicSignals,
-        treeDepth: semaphoreProof.merkleTreeDepth,
-      }
+      transactionId: data.jobId
     }
 
   } catch (error) {
@@ -454,17 +424,11 @@ export async function waitForProofVerification(
   options: {
     maxAttempts?: number
     intervalMs?: number
-    aggregation?: {
-      vkHash: string
-      publicSignals: string[]
-      treeDepth?: number
-    }
   } = {}
 ): Promise<{ success: boolean; status: string; data?: any; error?: string }> {
   const {
     maxAttempts = 60,
     intervalMs = 5000,
-    aggregation,
   } = options
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -481,52 +445,13 @@ export async function waitForProofVerification(
       const status = statusData.status
       
       console.log(`ZK Verify job status: ${status}`)
-
-      const enrichedStatus: any = { ...statusData, raw: statusData }
-
-      if (status === 'Aggregated') {
-        const aggregationArtifacts = extractAggregationArtifacts(statusData, {
-          treeDepth: aggregation?.treeDepth,
-        })
-
-        if (aggregationArtifacts && aggregation) {
-          try {
-            const computedLeaf = computeAggregationLeaf(aggregation.publicSignals, aggregation.vkHash)
-            aggregationArtifacts.computedLeaf = computedLeaf
-            aggregationArtifacts.leafMatches = aggregationArtifacts.leaf.toLowerCase() === computedLeaf.toLowerCase()
-          } catch (error) {
-            console.warn('Failed to recompute aggregation leaf', error)
-          }
-        }
-
-        if (aggregationArtifacts) {
-          if (config.zkVerify.rpcUrl) {
-            try {
-              const provider = new JsonRpcProvider(config.zkVerify.rpcUrl)
-              const verified = await verifyProofAggregationOnChain({
-                ...aggregationArtifactsToParams(aggregationArtifacts),
-                runner: provider,
-                treeDepth: aggregation?.treeDepth,
-              })
-              aggregationArtifacts.onChainVerified = verified
-              console.log('Aggregation on-chain verification result:', verified)
-            } catch (error) {
-              const message = error instanceof Error ? error.message : 'Unknown error'
-              aggregationArtifacts.onChainVerificationError = message
-              console.warn('Failed to verify aggregation on-chain', error)
-            }
-          }
-
-          enrichedStatus.aggregation = aggregationArtifacts
-        }
-      }
       
-      // Check for completion statuses
-      if (status === 'Finalized' || status === 'Aggregated') {
+      // Check for completion statuses (only Finalized, no aggregation)
+      if (status === 'Finalized') {
         return {
           success: true,
           status,
-          data: enrichedStatus
+          data: statusData
         }
       }
       

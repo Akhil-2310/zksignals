@@ -10,7 +10,6 @@ import { getGroupById, getGroupPosts, createPost, castVote, isUserGroupMember, g
 import { getCurrentAnonymousUser } from "../../../lib/auth"
 import { getOrCreateSemaphoreIdentity, generateSemaphoreProof, getSemaphoreIdentityFromStorage, createSemaphoreGroup, addMemberToGroup, generateSemaphoreProofDeterministic } from "../../../lib/semaphore"
 import { submitPostProof, submitVoteProof, waitForProofVerification } from "../../../lib/zk-verify"
-import type { AggregationArtifacts } from "../../../lib/zk-aggregation"
 import { config } from "../../../lib/config"
 
 type VerificationDetails = {
@@ -18,44 +17,7 @@ type VerificationDetails = {
   jobId?: string
   status?: string
   txHash?: string
-  aggregation?: AggregationArtifacts
   raw?: any
-}
-
-const AggregationStatus = ({ aggregation }: { aggregation: AggregationArtifacts }) => {
-  if (aggregation.onChainVerificationError) {
-    return (
-      <div className="flex items-center gap-2 text-amber-600">
-        <AlertCircle className="h-4 w-4" />
-        <span>On-chain verification error: {aggregation.onChainVerificationError}</span>
-      </div>
-    )
-  }
-
-  if (aggregation.onChainVerified === true) {
-    return (
-      <div className="flex items-center gap-2 text-green-600">
-        <Check className="h-4 w-4" />
-        <span>On-chain verification: verified</span>
-      </div>
-    )
-  }
-
-  if (aggregation.onChainVerified === false) {
-    return (
-      <div className="flex items-center gap-2 text-red-600">
-        <X className="h-4 w-4" />
-        <span>On-chain verification: not included</span>
-      </div>
-    )
-  }
-
-  return (
-    <div className="flex items-center gap-2 text-muted-foreground">
-      <AlertCircle className="h-4 w-4" />
-      <span>On-chain verification not performed.</span>
-    </div>
-  )
 }
 
 export default function GroupDetailPage() {
@@ -181,25 +143,10 @@ export default function GroupDetailPage() {
       // Wait for verification using raw jobId
       const verificationResult = await waitForProofVerification(
         zkVerifyResult.jobId || zkVerifyResult.proofHash,
-        zkVerifyResult.aggregation
-          ? {
-              maxAttempts: 90,
-              intervalMs: 7000,
-              aggregation: {
-                vkHash: zkVerifyResult.aggregation.vkHash,
-                publicSignals: zkVerifyResult.aggregation.publicSignals,
-                treeDepth: zkVerifyResult.aggregation.treeDepth,
-              },
-            }
-          : { maxAttempts: 90, intervalMs: 7000 }
+        { maxAttempts: 90, intervalMs: 7000 }
       )
       if (!verificationResult.success) {
         throw new Error(`Vote proof verification failed: ${verificationResult.error || verificationResult.status}`)
-      }
-
-      const aggregationStatus = verificationResult.data?.aggregation
-      if (aggregationStatus?.onChainVerified !== undefined) {
-        console.log('Vote aggregation on-chain verification result:', aggregationStatus.onChainVerified)
       }
 
       // Show success message with transaction hash
@@ -215,17 +162,10 @@ export default function GroupDetailPage() {
         jobId: verificationResult.data?.raw?.jobId ?? (zkVerifyResult.jobId || zkVerifyResult.proofHash),
         status: verificationResult.status,
         txHash,
-        aggregation: aggregationStatus,
         raw: verificationResult.data?.raw ?? verificationResult.data,
       })
 
-      setSuccessMessage(
-        aggregationStatus?.onChainVerified === false
-          ? 'Vote proof aggregated, but on-chain verification reported NOT included. Review details below.'
-          : aggregationStatus?.onChainVerified === true
-            ? 'Vote proof aggregated and verified on-chain.'
-            : 'Vote proof aggregated. See verification details below.'
-      )
+      setSuccessMessage('Vote proof verified successfully! See verification details below.')
 
       // Cast vote in database
       await castVote(
@@ -332,25 +272,10 @@ export default function GroupDetailPage() {
         // Wait for verification
         const verificationResult = await waitForProofVerification(
           zkVerifyResult.jobId || zkVerifyResult.proofHash,
-          zkVerifyResult.aggregation
-            ? {
-                maxAttempts: 90,
-                intervalMs: 7000,
-                aggregation: {
-                  vkHash: zkVerifyResult.aggregation.vkHash,
-                  publicSignals: zkVerifyResult.aggregation.publicSignals,
-                  treeDepth: zkVerifyResult.aggregation.treeDepth,
-                },
-              }
-            : { maxAttempts: 90, intervalMs: 7000 }
+          { maxAttempts: 90, intervalMs: 7000 }
         )
         if (!verificationResult.success) {
           throw new Error(`Post proof verification failed: ${verificationResult.error || verificationResult.status}`)
-        }
-
-        const aggregationStatus = verificationResult.data?.aggregation
-        if (aggregationStatus?.onChainVerified !== undefined) {
-          console.log('Post aggregation on-chain verification result:', aggregationStatus.onChainVerified)
         }
 
         // Show success message with transaction hash for posts
@@ -366,17 +291,10 @@ export default function GroupDetailPage() {
           jobId: verificationResult.data?.raw?.jobId ?? (zkVerifyResult.jobId || zkVerifyResult.proofHash),
           status: verificationResult.status,
           txHash,
-          aggregation: aggregationStatus,
           raw: verificationResult.data?.raw ?? verificationResult.data,
         })
 
-        setSuccessMessage(
-          aggregationStatus?.onChainVerified === false
-            ? 'Post proof aggregated, but on-chain verification reported NOT included. Review details below.'
-            : aggregationStatus?.onChainVerified === true
-              ? 'Post proof aggregated and verified on-chain.'
-              : 'Post proof aggregated. See verification details below.'
-        )
+        setSuccessMessage('Post proof verified successfully! See verification details below.')
 
         zkVerifyProofHash = zkVerifyResult.proofHash
       } else {
@@ -543,25 +461,6 @@ export default function GroupDetailPage() {
                     >
                       {lastVerification.txHash.slice(0, 10)}…{lastVerification.txHash.slice(-6)}
                     </a>
-                  </div>
-                )}
-
-                {lastVerification.aggregation && (
-                  <div className="space-y-1">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <div>
-                        <span className="font-medium text-foreground">Aggregation ID:</span>{' '}
-                        {lastVerification.aggregation.aggregationId ?? '—'}
-                      </div>
-                      <div>
-                        <span className="font-medium text-foreground">Leaf index:</span>{' '}
-                        {lastVerification.aggregation.index ?? '—'}
-                        {lastVerification.aggregation.leafCount !== undefined &&
-                          ` / ${lastVerification.aggregation.leafCount}`}
-                      </div>
-                    </div>
-
-                    <AggregationStatus aggregation={lastVerification.aggregation} />
                   </div>
                 )}
 

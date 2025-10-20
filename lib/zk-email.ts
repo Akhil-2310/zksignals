@@ -1,14 +1,5 @@
-import { JsonRpcProvider } from 'ethers'
-
 import { config } from './config'
-import {
-  AggregationArtifacts,
-  aggregationArtifactsToParams,
-  computeAggregationLeaf,
-  extractAggregationArtifacts,
-  normalizePublicSignals,
-  verifyProofAggregationOnChain,
-} from './zk-aggregation'
+import { normalizePublicSignals } from './zk-aggregation'
 
 export interface EmailProofArtifacts {
   proof: any
@@ -40,22 +31,12 @@ type ZkEmailProof = {
 
 export interface EmailVerificationStatusData {
   raw: any
-  aggregation?: AggregationArtifacts
 }
 
 export interface VerificationPollingOptions {
   maxAttempts?: number
   intervalMs?: number
-  proofData?: Pick<EmailProofArtifacts, 'publicSignals' | 'vkHash'>
 }
-
-// Re-export helpers for convenience
-export {
-  aggregationArtifactsToParams,
-  computeAggregationLeaf,
-  verifyProofAggregationOnChain,
-} from './zk-aggregation'
-export type { AggregationArtifacts } from './zk-aggregation'
 
 export function parseEmailBlueprint(blueprintString: string): EmailBlueprint {
   // Parse format: username/blueprint-name@version
@@ -186,7 +167,7 @@ export async function verifyEmailWithBlueprint(
 
     const publicSignals = normalizePublicSignals(publicSignalsRaw)
     
-    // Submit proof to ZK Verify relayer
+    // Submit proof to ZK Verify relayer (without chainId to avoid aggregation)
     const submitParams: Record<string, unknown> = {
       proofType: 'groth16',
       vkRegistered: true, // We're using a registered vkHash
@@ -200,10 +181,9 @@ export async function verifyEmailWithBlueprint(
         vk: vkHash, // Pass the vkHash (not the full vkey)
       },
     }
-
-    if (config.zkVerify.chainId) {
-      submitParams.chainId = config.zkVerify.chainId
-    }
+    
+    // Note: chainId is intentionally NOT included to avoid aggregation
+    // When chainId is omitted, zkVerify will finalize the proof directly without aggregation
     
     const submitResponse = await fetch(
       `${config.zkVerify.relayerUrl}/submit-proof/${config.zkVerify.apiKey}`,
@@ -258,7 +238,6 @@ export async function waitForEmailVerification(
   const {
     maxAttempts = 60,
     intervalMs = 5000,
-    proofData,
   } = options
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -278,42 +257,8 @@ export async function waitForEmailVerification(
       
       const result: EmailVerificationStatusData = { raw: statusData }
 
-      if (status === 'Aggregated') {
-        const aggregation = extractAggregationArtifacts(statusData)
-
-        if (aggregation && proofData) {
-          try {
-            const computedLeaf = computeAggregationLeaf(proofData.publicSignals, proofData.vkHash)
-            aggregation.computedLeaf = computedLeaf
-            aggregation.leafMatches = aggregation.leaf.toLowerCase() === computedLeaf.toLowerCase()
-          } catch (error) {
-            console.warn('Failed to recompute aggregation leaf', error)
-          }
-        }
-
-        if (aggregation) {
-          if (config.zkVerify.rpcUrl) {
-            try {
-              const provider = new JsonRpcProvider(config.zkVerify.rpcUrl)
-              const verified = await verifyProofAggregationOnChain({
-                ...aggregationArtifactsToParams(aggregation),
-                runner: provider,
-              })
-              aggregation.onChainVerified = verified
-              console.log('Email aggregation on-chain verification result:', verified)
-            } catch (error) {
-              const message = error instanceof Error ? error.message : 'Unknown error'
-              aggregation.onChainVerificationError = message
-              console.warn('Failed to verify email aggregation on-chain', error)
-            }
-          }
-
-          result.aggregation = aggregation
-        }
-      }
-
-      // Check for completion statuses
-      if (status === 'Finalized' || status === 'Aggregated') {
+      // Check for completion statuses (only Finalized, no aggregation)
+      if (status === 'Finalized') {
         return {
           success: true,
           status,

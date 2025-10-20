@@ -10,7 +10,6 @@ import { getCurrentAnonymousUser } from "../../lib/auth"
 import { verifyEmailWithBlueprint, waitForEmailVerification } from "../../lib/zk-email"
 import { getOrCreateSemaphoreIdentity } from "../../lib/semaphore"
 import { storeSemaphoreIdentity } from "../../lib/database"
-import type { AggregationArtifacts } from "../../lib/zk-aggregation"
 import { config } from "../../lib/config"
 import Image from "next/image"
 
@@ -18,44 +17,7 @@ type EmailVerificationDetails = {
   jobId?: string
   status?: string
   txHash?: string
-  aggregation?: AggregationArtifacts
   raw?: any
-}
-
-const AggregationStatus = ({ aggregation }: { aggregation: AggregationArtifacts }) => {
-  if (aggregation.onChainVerificationError) {
-    return (
-      <div className="flex items-center gap-2 text-amber-600">
-        <AlertCircle className="h-4 w-4" />
-        <span>On-chain verification error: {aggregation.onChainVerificationError}</span>
-      </div>
-    )
-  }
-
-  if (aggregation.onChainVerified === true) {
-    return (
-      <div className="flex items-center gap-2 text-green-600">
-        <Check className="h-4 w-4" />
-        <span>On-chain verification: verified</span>
-      </div>
-    )
-  }
-
-  if (aggregation.onChainVerified === false) {
-    return (
-      <div className="flex items-center gap-2 text-red-600">
-        <X className="h-4 w-4" />
-        <span>On-chain verification: not included</span>
-      </div>
-    )
-  }
-
-  return (
-    <div className="flex items-center gap-2 text-muted-foreground">
-      <AlertCircle className="h-4 w-4" />
-      <span>On-chain verification not performed.</span>
-    </div>
-  )
 }
 
 export default function GroupsPage() {
@@ -163,11 +125,6 @@ export default function GroupsPage() {
         throw new Error(verificationResult.error || "Email proof verification failed")
       }
 
-      const aggregationStatus = verificationResult.data?.aggregation
-      if (aggregationStatus?.onChainVerified !== undefined) {
-        console.log('Email aggregation on-chain verification result:', aggregationStatus.onChainVerified)
-      }
-
       // Show success message with transaction hash
       const txHash = verificationResult.data?.raw?.txHash
         || verificationResult.data?.raw?.transactionHash
@@ -180,17 +137,10 @@ export default function GroupsPage() {
         jobId: verificationResult.data?.raw?.jobId ?? emailVerification.jobId,
         status: verificationResult.status,
         txHash,
-        aggregation: aggregationStatus,
         raw: verificationResult.data?.raw ?? verificationResult.data,
       })
 
-      setSuccessMessage(
-        aggregationStatus?.onChainVerified === false
-          ? 'Email proof aggregated, but on-chain verification reported NOT included. Review details below.'
-          : aggregationStatus?.onChainVerified === true
-            ? 'Email proof aggregated and verified on-chain.'
-            : 'Email proof aggregated. See verification details below.'
-      )
+      setSuccessMessage('Email proof verified successfully! See verification details below.')
 
       // Step 3: Generate Semaphore identity
       setVerificationStep('generating-proof')
@@ -219,20 +169,13 @@ export default function GroupsPage() {
       // Update membership status for this group
       setMembershipStatus(prev => ({ ...prev, [joinGroupId]: true }))
       
-      const aggregatorLabel = aggregationStatus?.onChainVerified === false
-        ? 'Not included on-chain'
-        : aggregationStatus?.onChainVerified === true
-          ? 'Verified on-chain'
-          : aggregationStatus?.onChainVerificationError
-            ? `Verification error: ${aggregationStatus.onChainVerificationError}`
-            : 'On-chain verification not performed'
       const transactionInfo = txHash
         || verificationResult.data?.raw?.transactionHash
         || verificationResult.data?.raw?.txHash
         || verificationResult.data?.raw?.tx_hash
         || verificationResult.data?.raw?.jobId
         || verificationResult.status
-      const message = `Successfully joined group!\n\nZK Email Proof: ${emailVerification.jobId}\nZK Verify Status: ${verificationResult.status}\nAggregation: ${aggregatorLabel}\nTransaction: ${transactionInfo}\n\nCheck "My Groups" to see your new group.`
+      const message = `Successfully joined group!\n\nZK Email Proof: ${emailVerification.jobId}\nZK Verify Status: ${verificationResult.status}\nTransaction: ${transactionInfo}\n\nCheck "My Groups" to see your new group.`
       alert(message)
       
     } catch (error) {
@@ -502,25 +445,6 @@ export default function GroupsPage() {
                             >
                               {verificationDetails.txHash.slice(0, 10)}…{verificationDetails.txHash.slice(-6)}
                             </a>
-                          </div>
-                        )}
-
-                        {verificationDetails.aggregation && (
-                          <div className="space-y-1">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                              <div>
-                                <span className="font-medium text-foreground">Aggregation ID:</span>{' '}
-                                {verificationDetails.aggregation.aggregationId ?? '—'}
-                              </div>
-                              <div>
-                                <span className="font-medium text-foreground">Leaf index:</span>{' '}
-                                {verificationDetails.aggregation.index ?? '—'}
-                                {verificationDetails.aggregation.leafCount !== undefined &&
-                                  ` / ${verificationDetails.aggregation.leafCount}`}
-                              </div>
-                            </div>
-
-                            <AggregationStatus aggregation={verificationDetails.aggregation} />
                           </div>
                         )}
 
