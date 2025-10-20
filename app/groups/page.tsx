@@ -12,6 +12,7 @@ import { getOrCreateSemaphoreIdentity } from "../../lib/semaphore"
 import { storeSemaphoreIdentity } from "../../lib/database"
 import type { AggregationArtifacts } from "../../lib/zk-aggregation"
 import { config } from "../../lib/config"
+import Image from "next/image"
 
 type EmailVerificationDetails = {
   jobId?: string
@@ -251,10 +252,16 @@ export default function GroupsPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <Link href="/" className="flex items-center space-x-2">
-                <Shield className="h-8 w-8 text-primary" />
-                <span className="text-xl font-bold text-foreground">BeYou</span>
-              </Link>
+            <Link href="/" className="flex items-center space-x-2">
+        <Image
+          src="/beyou logo.jpeg"        // path to your image (e.g., in /public/logo.png)
+          alt="BeYou Logo"
+          width={32}              // adjust as needed
+          height={32}
+          className="rounded-full" // optional styling
+        />
+        <span className="text-xl font-bold text-foreground">BeYou</span>
+      </Link>
             </div>
             <div className="flex items-center space-x-4">
               <Link href="/groups" className="text-primary font-medium">

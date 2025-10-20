@@ -4,6 +4,7 @@ import type React from "react"
 
 import { useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { ArrowLeft, Shield, Plus, X, Loader2 } from "lucide-react"
 import { createGroup } from "../../lib/database"
 import { getCurrentAnonymousUser } from "../../lib/auth"
@@ -66,9 +67,15 @@ export default function CreateGroupPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <Link href="/" className="flex items-center space-x-2">
-                <Shield className="h-8 w-8 text-primary" />
-                <span className="text-xl font-bold text-foreground">BeYou</span>
+            <Link href="/" className="flex items-center space-x-2">
+        <Image
+          src="/beyou logo.jpeg"        // path to your image (e.g., in /public/logo.png)
+          alt="BeYou Logo"
+          width={32}              // adjust as needed
+          height={32}
+          className="rounded-full" // optional styling
+        />
+        <span className="text-xl font-bold text-foreground">BeYou</span>
               </Link>
             </div>
             <div className="flex items-center space-x-4">

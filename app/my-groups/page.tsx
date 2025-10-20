@@ -7,6 +7,7 @@ import Link from "next/link"
 import { Shield, Users, MessageSquare, Calendar, ArrowRight, Loader2 } from "lucide-react"
 import { getUserGroups, type Group } from "../../lib/database"
 import { getCurrentAnonymousUser } from "../../lib/auth"
+import Image from "next/image"
 
 export default function MyGroupsPage() {
   const [groups, setGroups] = useState<Group[]>([])
@@ -37,10 +38,16 @@ export default function MyGroupsPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <Link href="/" className="flex items-center space-x-2">
-                <Shield className="h-8 w-8 text-primary" />
-                <span className="text-xl font-bold text-foreground">BeYou</span>
-              </Link>
+            <Link href="/" className="flex items-center space-x-2">
+        <Image
+          src="/beyou logo.jpeg"        // path to your image (e.g., in /public/logo.png)
+          alt="BeYou Logo"
+          width={32}              // adjust as needed
+          height={32}
+          className="rounded-full" // optional styling
+        />
+        <span className="text-xl font-bold text-foreground">BeYou</span>
+      </Link>
             </div>
             <div className="flex items-center space-x-4">
               <Link href="/groups" className="text-muted-foreground hover:text-foreground transition-colors">
