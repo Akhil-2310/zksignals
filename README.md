@@ -1,8 +1,8 @@
-# 🛡️ zkSignals
+# 🛡️ BeYou
 
 **Anonymous Signaling for Verified Communities**
 
-zkSignals is a privacy-preserving platform that enables anonymous communication, feedback, and voting within verified communities. By combining ZK Email proofs with Semaphore's zero-knowledge technology, users can participate in group discussions and decision-making while maintaining complete anonymity.
+BeYou is a privacy-preserving platform that enables anonymous communication, feedback, and voting within verified communities. By combining ZK Email proofs with Semaphore's zero-knowledge technology, users can participate in group discussions and decision-making while maintaining complete anonymity.
 
 ---
 
@@ -10,7 +10,7 @@ zkSignals is a privacy-preserving platform that enables anonymous communication,
 
 ## 📧 **Test EML Files**
 
-To help you test zkSignals, we've provided sample EML files for different email domains. Download and use these files when joining groups:
+To help you test BeYou, we've provided sample EML files for different email domains. Download and use these files when joining groups:
 
 
 ### **📥 Download Ready-to-Use Files**
@@ -28,14 +28,14 @@ You can download these pre-made EML files:
 3. **ZK Email verification** will prove domain membership without revealing the actual email
 4. **Join anonymously** and start posting/voting!
 
-## 🎯 **Why zkSignals?**
+## 🎯 **Why BeYou?**
 
 In today's digital world, authentic anonymous communication is challenging. Traditional platforms either:
 - **Lack verification** → Anyone can create fake accounts and spam
 - **Compromise privacy** → Your identity is tied to your communications
 - **Enable bad actors** → No accountability mechanisms
 
-zkSignals solves this by creating **verified anonymous communities** where:
+BeYou solves this by creating **verified anonymous communities** where:
 - ✅ **Members are verified** (through email domain verification)
 - ✅ **Communication is anonymous** (using zero-knowledge proofs)
 - ✅ **Participation is secure** (cryptographically guaranteed)
