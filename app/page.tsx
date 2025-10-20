@@ -11,7 +11,7 @@ export default function HomePage() {
             <div className="flex items-center">
               <Link href="/" className="flex items-center space-x-2">
                 <Shield className="h-8 w-8 text-primary" />
-                <span className="text-xl font-bold text-foreground">zkSignals</span>
+                <span className="text-xl font-bold text-foreground">BeYou</span>
               </Link>
             </div>
             <div className="hidden md:flex items-center space-x-8">
@@ -147,7 +147,7 @@ export default function HomePage() {
       <section id="how-it-works" className="py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">How zkSignals Works</h2>
+            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">How BeYou Works</h2>
             <p className="text-xl text-muted-foreground">
               Simple steps to create and join verified anonymous communities
             </p>
@@ -227,22 +227,19 @@ export default function HomePage() {
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="flex items-center space-x-2 mb-4 md:mb-0">
               <Shield className="h-6 w-6 text-primary" />
-              <span className="text-lg font-semibold text-foreground">zkSignals</span>
+              <span className="text-lg font-semibold text-foreground">BeYou</span>
             </div>
             <div className="flex items-center space-x-6">
-              <Link href="/privacy" className="text-muted-foreground hover:text-foreground transition-colors">
-                Privacy Policy
-              </Link>
-              <Link href="/terms" className="text-muted-foreground hover:text-foreground transition-colors">
-                Terms of Service
-              </Link>
-              <Link href="/contact" className="text-muted-foreground hover:text-foreground transition-colors">
+              <a href="https://github.com/zksignals" target="_blank" className="text-muted-foreground hover:text-foreground transition-colors">
+                GitHub
+              </a>
+              <a href="https://x.com/zk_soc" target="_blank" className="text-muted-foreground hover:text-foreground transition-colors">
                 Contact
-              </Link>
+              </a>
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-border text-center text-muted-foreground">
-            <p>&copy; 2025 zkSignals. Built for privacy-first communities.</p>
+            <p>&copy; 2025 BeYou. Built for privacy-first communities.</p>
           </div>
         </div>
       </footer>
