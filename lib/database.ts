@@ -111,6 +111,7 @@ export async function getUserGroups(userAnonymousId: string): Promise<Group[]> {
     throw new Error('Failed to fetch user groups')
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return data?.map((item: any) => item.groups).filter(Boolean) || []
 }
 
@@ -160,7 +161,8 @@ export async function createGroup(
 ): Promise<Group> {
   // Create Semaphore group
   const semaphoreGroup = createSemaphoreGroup()
-  const serializedGroup = serializeGroup(semaphoreGroup)
+  // Serialize group for future use if needed
+  serializeGroup(semaphoreGroup)
   
   const { data, error } = await supabase
     .from('groups')

@@ -5,19 +5,19 @@ import type React from "react"
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
-import { Shield, Users, MessageSquare, Plus, ThumbsUp, ThumbsDown, ArrowLeft, User, Loader2, Check, X, AlertCircle } from "lucide-react"
+import { Users, MessageSquare, Plus, ThumbsUp, ThumbsDown, ArrowLeft, User, Loader2 } from "lucide-react"
 import { getGroupById, getGroupPosts, createPost, castVote, isUserGroupMember, getGroupMembers, getUserIdentityCommitmentFromGroup, type Group, type Post } from "../../../lib/database"
 import { getCurrentAnonymousUser } from "../../../lib/auth"
-import { getOrCreateSemaphoreIdentity, generateSemaphoreProof, getSemaphoreIdentityFromStorage, createSemaphoreGroup, addMemberToGroup, generateSemaphoreProofDeterministic } from "../../../lib/semaphore"
+import { generateSemaphoreProof, getSemaphoreIdentityFromStorage, createSemaphoreGroup, addMemberToGroup } from "../../../lib/semaphore"
 import { submitPostProof, submitVoteProof, waitForProofVerification } from "../../../lib/zk-verify"
 import { config } from "../../../lib/config"
-
+import Image from "next/image"
 type VerificationDetails = {
   context: 'vote' | 'post'
   jobId?: string
   status?: string
   txHash?: string
-  raw?: any
+  raw?: unknown
 }
 
 export default function GroupDetailPage() {
@@ -129,12 +129,7 @@ export default function GroupDetailPage() {
       )
 
       // Submit proof to ZK Verify
-      const zkVerifyResult = await submitVoteProof(
-        proofData,
-        groupId,
-        postId,
-        vote
-      )
+      const zkVerifyResult = await submitVoteProof(proofData)
 
       if (!zkVerifyResult.success) {
         throw new Error(zkVerifyResult.error || "Failed to submit vote proof")
@@ -150,19 +145,20 @@ export default function GroupDetailPage() {
       }
 
       // Show success message with transaction hash
-      const txHash = verificationResult.data?.raw?.txHash
-        || verificationResult.data?.raw?.transactionHash
-        || verificationResult.data?.raw?.tx_hash
+      const data = verificationResult.data as { raw?: { txHash?: string; transactionHash?: string; tx_hash?: string; jobId?: string } }
+      const txHash = data?.raw?.txHash
+        || data?.raw?.transactionHash
+        || data?.raw?.tx_hash
       if (txHash) {
         console.log(`Vote verified on-chain! Transaction: ${txHash}`)
       }
 
       setLastVerification({
         context: 'vote',
-        jobId: verificationResult.data?.raw?.jobId ?? (zkVerifyResult.jobId || zkVerifyResult.proofHash),
+        jobId: data?.raw?.jobId ?? (zkVerifyResult.jobId || zkVerifyResult.proofHash),
         status: verificationResult.status,
         txHash,
-        raw: verificationResult.data?.raw ?? verificationResult.data,
+        raw: data?.raw ?? verificationResult.data,
       })
 
       setSuccessMessage('Vote proof verified successfully! See verification details below.')
@@ -279,19 +275,20 @@ export default function GroupDetailPage() {
         }
 
         // Show success message with transaction hash for posts
-        const txHash = verificationResult.data?.raw?.txHash
-          || verificationResult.data?.raw?.transactionHash
-          || verificationResult.data?.raw?.tx_hash
+        const postData = verificationResult.data as { raw?: { txHash?: string; transactionHash?: string; tx_hash?: string; jobId?: string } }
+        const txHash = postData?.raw?.txHash
+          || postData?.raw?.transactionHash
+          || postData?.raw?.tx_hash
         if (txHash) {
           console.log(`Post verified on-chain! Transaction: ${txHash}`)
         }
         
         setLastVerification({
           context: 'post',
-          jobId: verificationResult.data?.raw?.jobId ?? (zkVerifyResult.jobId || zkVerifyResult.proofHash),
+          jobId: postData?.raw?.jobId ?? (zkVerifyResult.jobId || zkVerifyResult.proofHash),
           status: verificationResult.status,
           txHash,
-          raw: verificationResult.data?.raw ?? verificationResult.data,
+          raw: postData?.raw ?? verificationResult.data,
         })
 
         setSuccessMessage('Post proof verified successfully! See verification details below.')
@@ -379,9 +376,15 @@ export default function GroupDetailPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center">
-              <Link href="/" className="flex items-center space-x-2">
-                <Shield className="h-8 w-8 text-primary" />
-                <span className="text-xl font-bold text-foreground">BeYou</span>
+            <Link href="/" className="flex items-center space-x-2">
+        <Image
+          src="/beyou logo.jpeg"        // path to your image (e.g., in /public/logo.png)
+          alt="BeYou Logo"
+          width={32}              // adjust as needed
+          height={32}
+          className="rounded-full" // optional styling
+        />
+        <span className="text-xl font-bold text-foreground">BeYou</span>
               </Link>
             </div>
             <div className="flex items-center space-x-4">
@@ -464,11 +467,11 @@ export default function GroupDetailPage() {
                   </div>
                 )}
 
-                {lastVerification.raw && (
+                {Boolean(lastVerification.raw) && (
                   <details className="mt-2">
                     <summary className="cursor-pointer text-foreground font-medium">View raw relayer response</summary>
                     <pre className="mt-2 bg-background border border-border rounded-md p-3 overflow-x-auto text-xs text-foreground/80">
-                      {JSON.stringify(lastVerification.raw, null, 2)}
+                      {JSON.stringify(lastVerification.raw as object, null, 2)}
                     </pre>
                   </details>
                 )}

@@ -28,7 +28,7 @@ const parseNumberKeyedMap = (raw?: string): Record<number, string> => {
       }
       return acc
     }, {})
-  } catch (error) {
+  } catch {
     console.warn('Invalid number-keyed map env value. Expected JSON object mapping tree depth to strings.')
     return {}
   }

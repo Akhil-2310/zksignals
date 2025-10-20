@@ -2,6 +2,7 @@
 // Note: Aggregation functionality has been removed. 
 // This file now only contains utility functions used by other modules.
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function normalizePublicSignals(signals: any[]): string[] {
   return signals.map(signal => {
     if (typeof signal === 'string') {

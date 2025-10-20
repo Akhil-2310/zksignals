@@ -2,6 +2,7 @@ import { config } from './config'
 import { normalizePublicSignals } from './zk-aggregation'
 
 export interface EmailProofArtifacts {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   proof: any
   publicSignals: string[]
   vkHash: string
@@ -23,13 +24,17 @@ export interface EmailBlueprint {
 // Type for ZK Email proof structure
 type ZkEmailProof = {
   props: {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     proofData: any
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     publicOutputs?: any[]
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     publicData?: any[]
   }
 }
 
 export interface EmailVerificationStatusData {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   raw: any
 }
 
@@ -64,6 +69,7 @@ export function parseEmailBlueprint(blueprintString: string): EmailBlueprint {
 // Cache for registered vkHashes to avoid re-registering
 const vkHashCache = new Map<string, string>()
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function ensureVkHash(vkeyObj: any, blueprintSlug: string): Promise<string> {
   // Check cache first
   if (vkHashCache.has(blueprintSlug)) {
@@ -96,6 +102,7 @@ async function ensureVkHash(vkeyObj: any, blueprintSlug: string): Promise<string
     }
   )
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let data: any
   let vkHash: string
 
@@ -114,7 +121,7 @@ async function ensureVkHash(vkeyObj: any, blueprintSlug: string): Promise<string
       } else {
         throw new Error(`Failed to register vkey: ${response.status} ${response.statusText}. ${errorText}`)
       }
-    } catch (parseError) {
+    } catch {
       // If we can't parse the error, throw the original error
       throw new Error(`Failed to register vkey: ${response.status} ${response.statusText}. ${errorText}`)
     }

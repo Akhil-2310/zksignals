@@ -50,12 +50,9 @@ export interface AnonymousUser {
     }
   }
   
-  // Verify email proof using zero-knowledge verification
-  // This is a placeholder for the actual zkemail integration
-  export async function verifyEmailProof(
-    proofFile: File,
-    requirements: string[],
-  ): Promise<{
+// Verify email proof using zero-knowledge verification
+// This is a placeholder for the actual zkemail integration
+export async function verifyEmailProof(): Promise<{
     isValid: boolean
     proofHash: string
     error?: string

@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Shield, Users, Eye, Upload, X, Check, Loader2, AlertCircle } from "lucide-react"
+import { Users, Eye, Upload, X, Check, Loader2 } from "lucide-react"
 import { getAllGroups, joinGroup as joinGroupDB, isUserGroupMember, type Group } from "../../lib/database"
 import { getCurrentAnonymousUser } from "../../lib/auth"
 import { verifyEmailWithBlueprint, waitForEmailVerification } from "../../lib/zk-email"
@@ -17,7 +17,7 @@ type EmailVerificationDetails = {
   jobId?: string
   status?: string
   txHash?: string
-  raw?: any
+  raw?: unknown
 }
 
 export default function GroupsPage() {
@@ -448,11 +448,11 @@ export default function GroupsPage() {
                           </div>
                         )}
 
-                        {verificationDetails.raw && (
+                        {Boolean(verificationDetails.raw) && (
                           <details className="mt-2">
                             <summary className="cursor-pointer text-foreground font-medium">View raw relayer response</summary>
                             <pre className="mt-2 bg-background border border-border rounded-md p-3 overflow-x-auto text-xs text-foreground/80">
-                              {JSON.stringify(verificationDetails.raw, null, 2)}
+                              {JSON.stringify(verificationDetails.raw as object, null, 2)}
                             </pre>
                           </details>
                         )}

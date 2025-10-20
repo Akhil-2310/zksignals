@@ -3,7 +3,6 @@ import { generateProof } from '@semaphore-protocol/proof'
 import { unpackGroth16Proof } from '@zk-kit/utils'
 import { keccak256, toBeHex } from 'ethers'
 import { encodeBytes32String } from 'ethers/abi'
-import type { NumericString } from "snarkjs"
 import type { BigNumberish } from 'ethers'
 import { getCurrentAnonymousUser } from './auth'
 
@@ -28,6 +27,7 @@ export interface SemaphoreProofData {
 }
 
 export type SemProofBundle = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   proofSnarkjs: any              // {pi_a, pi_b, pi_c}
   merkleTreeRoot: string
   nullifier: string
@@ -38,7 +38,7 @@ export type SemProofBundle = {
 }
 
 // Hash function for Semaphore (matches the circuit)
-export function hash(message: BigNumberish | string): NumericString {
+export function hash(message: BigNumberish | string): string {
   let messageToHash: BigNumberish
   
   // If message is a string, hash it first to get a fixed-size value

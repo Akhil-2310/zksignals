@@ -21,6 +21,7 @@ export interface ZKVerifyProofStatus {
 }
 
 export interface ZKVerifyProofPayload {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   proof: any // The actual proof data (Semaphore proof)
   publicInputs: string[] // Public inputs for verification
   proofType: 'semaphore' | 'zk-email'
@@ -138,9 +139,7 @@ export function getSemaphoreVkHash(depth?: number): string {
 
 // Submit Semaphore proof for group joining
 export async function submitGroupJoinProof(
-  semaphoreProof: SemaphoreProofData,
-  groupId: string,
-  zkEmailProofHash: string
+  semaphoreProof: SemaphoreProofData
 ): Promise<ZKVerifySubmissionResult> {
   try {
     const vkHash = getSemaphoreVkHash(semaphoreProof.merkleTreeDepth)
@@ -286,10 +285,7 @@ export async function submitPostProof(
 
 // Submit Semaphore proof for voting
 export async function submitVoteProof(
-  semaphoreProof: SemaphoreProofData,
-  groupId: string,
-  postId: string,
-  voteChoice: 'yes' | 'no'
+  semaphoreProof: SemaphoreProofData
 ): Promise<ZKVerifySubmissionResult> {
   try {
     const vkHash = getSemaphoreVkHash(semaphoreProof.merkleTreeDepth)
@@ -368,9 +364,7 @@ export async function submitVoteProof(
 // Note: ZK Email proofs are now handled directly in zk-email.ts
 // This function is kept for backward compatibility but should not be used
 export async function submitZKEmailProof(
-  emailProofHash: string,
-  blueprintId: string,
-  groupId: string
+  emailProofHash: string
 ): Promise<ZKVerifySubmissionResult> {
   // ZK Email proofs are now submitted directly via the ZK Email SDK
   // This is a placeholder for backward compatibility
@@ -425,7 +419,7 @@ export async function waitForProofVerification(
     maxAttempts?: number
     intervalMs?: number
   } = {}
-): Promise<{ success: boolean; status: string; data?: any; error?: string }> {
+): Promise<{ success: boolean; status: string; data?: unknown; error?: string }> {
   const {
     maxAttempts = 60,
     intervalMs = 5000,

@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Shield, Users, MessageSquare, Calendar, ArrowRight, Loader2 } from "lucide-react"
+import { Calendar, ArrowRight, Loader2, Users } from "lucide-react"
 import { getUserGroups, type Group } from "../../lib/database"
 import { getCurrentAnonymousUser } from "../../lib/auth"
 import Image from "next/image"
@@ -71,7 +71,7 @@ export default function MyGroupsPage() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">My Groups</h1>
-          <p className="text-muted-foreground">Groups you've joined and can participate in anonymously</p>
+          <p className="text-muted-foreground">Groups you&apos;ve joined and can participate in anonymously</p>
         </div>
 
         {/* Loading State */}

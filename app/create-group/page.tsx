@@ -5,11 +5,11 @@ import type React from "react"
 import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { ArrowLeft, Shield, Plus, X, Loader2 } from "lucide-react"
+import { ArrowLeft, Loader2 } from "lucide-react"
 import { createGroup } from "../../lib/database"
 import { getCurrentAnonymousUser } from "../../lib/auth"
 import { validateBlueprintFormat, BLUEPRINT_EXAMPLES } from "../../lib/zk-email"
-import { createSemaphoreGroup, serializeGroup } from "../../lib/semaphore"
+import { createSemaphoreGroup } from "../../lib/semaphore"
 
 export default function CreateGroupPage() {
   const [formData, setFormData] = useState({
@@ -35,7 +35,7 @@ export default function CreateGroupPage() {
       const user = getCurrentAnonymousUser()
       
       // Create Semaphore group
-      const semaphoreGroup = createSemaphoreGroup()
+      createSemaphoreGroup()
       const semaphoreGroupId = `semaphore_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
       // Create group in database
