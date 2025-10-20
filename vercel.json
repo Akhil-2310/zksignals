@@ -1,0 +1,11 @@
+{
+  "buildCommand": "npm run build",
+  "framework": "nextjs",
+  "functions": {
+    "app/**/*.tsx": {
+      "maxDuration": 60
+    }
+  },
+  "regions": ["iad1"]
+}
+
