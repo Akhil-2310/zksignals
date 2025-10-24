@@ -248,7 +248,7 @@ export default function HomePage() {
               <a href="https://github.com/zksignals" target="_blank" className="text-muted-foreground hover:text-foreground transition-colors">
                 GitHub
               </a>
-              <a href="https://x.com/zk_soc" target="_blank" className="text-muted-foreground hover:text-foreground transition-colors">
+              <a href="https://x.com/_beyouuu_" target="_blank" className="text-muted-foreground hover:text-foreground transition-colors">
                 Contact
               </a>
             </div>
