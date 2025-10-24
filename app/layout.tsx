@@ -7,7 +7,7 @@ import { Suspense } from "react"
 import "./globals.css"
 
 export const metadata: Metadata = {
-  title: "zkSignals - Anonymous Feedback for Verified Communities",
+  title: "BeYou",
   description:
     "Create secure groups based on email verification and enable anonymous signaling, feedback, and voting within trusted communities.",
   generator: "v0.app",
