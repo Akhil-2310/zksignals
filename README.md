@@ -6,7 +6,9 @@ BeYou is a privacy-preserving platform that enables anonymous communication, fee
 
 ---
 
-## [Demo Video](https://www.loom.com/share/7beff78996cb427681c9faafa3d730eb)
+## [Live Link](https://beyouu.vercel.app/)
+## [Demo Video](https://youtu.be/l-CAGo-4Qa4)
+## [Presentation](https://www.canva.com/design/DAGz_nFHX1I/3azXrsB-S72120dFjerj3g/edit)
 
 ## 📧 **Test EML Files**
 
